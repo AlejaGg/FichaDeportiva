@@ -1,0 +1,160 @@
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabaseClient';
+import { Database } from '../types/database';
+import Button from '../components/Button';
+import './print.css'; // Import print-specific styles
+
+// Type for the full student data returned by the RPC function
+type FullStudentDetails = Database['public']['Functions']['get_student_full_details']['Returns'];
+
+// Helper component for styled sections
+const DetailSection: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
+  <div className={`mb-6 bg-white rounded-lg shadow-md p-6 ${className}`}>
+    <h2 className="text-xl font-bold mb-4 border-b pb-2 text-gray-700">{title}</h2>
+    <div className="space-y-2 text-gray-800">
+      {children}
+    </div>
+  </div>
+);
+
+const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div className="grid grid-cols-3 gap-4">
+    <strong className="font-semibold col-span-1">{label}:</strong>
+    <span className="col-span-2">{value ?? <span className="text-gray-400">No disponible</span>}</span>
+  </div>
+);
+
+const StudentDetails: React.FC = () => {
+  const { cedula } = useParams<{ cedula?: string }>();
+  const navigate = useNavigate();
+  
+  const [student, setStudent] = useState<FullStudentDetails | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchDetails = async (id: string) => {
+      setLoading(true);
+      setError(null);
+      setStudent(null);
+      
+      const { data, error } = await supabase.rpc('get_student_full_details', { p_cedula: id });
+
+      if (error) {
+        console.error('Error fetching details:', error);
+        setError(`Error al buscar al estudiante: ${error.message}`);
+      } else if (!data || Object.keys(data).length === 0) {
+        setError(`No se encontró ningún estudiante con la cédula: ${id}`);
+      } else {
+        setStudent(data);
+      }
+      setLoading(false);
+    };
+
+    if (cedula) {
+      fetchDetails(cedula);
+    }
+  }, [cedula]);
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="printable-area">
+      <Button onClick={() => navigate('/students')} className="no-print mb-6" variant="secondary">
+        &larr; Volver a la lista
+      </Button>
+
+      {loading && <div className="text-center p-8">Cargando...</div>}
+      {error && <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-md">{error}</div>}
+      
+      {student && (
+        <div id="student-record">
+          <div className="flex justify-between items-center mb-6">
+             <h1 className="text-3xl font-bold text-gray-800">Ficha Deportiva</h1>
+             <Button onClick={handlePrint} className="no-print">Imprimir Ficha</Button>
+          </div>
+          
+          <DetailSection title="Datos Personales">
+            <DetailItem label="Cédula" value={student.cedula} />
+            <DetailItem label="Nombres y Apellidos" value={student.nombres_apellidos} />
+            <DetailItem label="Fecha de Nacimiento" value={student.fecha_nacimiento} />
+            <DetailItem label="Edad" value={`${student.edad} años`} />
+            <DetailItem label="Dirección" value={student.direccion} />
+            <DetailItem label="Correo" value={student.correo} />
+            <DetailItem label="Facultad" value={student.facultad} />
+            <DetailItem label="Carrera" value={student.carrera} />
+          </DetailSection>
+
+          <DetailSection title="Información Deportiva">
+            <DetailItem label="Deportes" value={student.deportes?.join(', ')} />
+          </DetailSection>
+
+          {student.ficha_medica && (
+            <DetailSection title="Ficha Médica">
+                <DetailItem label="Tipo de Sangre" value={student.ficha_medica.tipo_sangre} />
+                <DetailItem label="Patologías" value={student.ficha_medica.patologias} />
+                <DetailItem label="Última Consulta Médica" value={student.ficha_medica.ultima_consulta_medica} />
+            </DetailSection>
+          )}
+
+          <DetailSection title="Tests Físicos">
+            {student.tests_fisicos && student.tests_fisicos.length > 0 ? (
+                <table className="w-full text-left mt-4">
+                    <thead>
+                        <tr className="border-b bg-gray-50">
+                            <th className="p-3">Categoría</th>
+                            <th className="p-3">Prueba</th>
+                            <th className="p-3">Resultado</th>
+                            <th className="p-3">Unidad</th>
+                            <th className="p-3">Fecha de Registro</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {student.tests_fisicos.map(test => (
+                            <tr key={test.id} className="border-b">
+                                <td className="p-3">{test.categoria}</td>
+                                <td className="p-3">{test.prueba}</td>
+                                <td className="p-3">{test.resultado}</td>
+                                <td className="p-3">{test.unidad}</td>
+                                <td className="p-3">{new Date(test.fecha_prueba).toLocaleDateString()}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : <p>No hay tests físicos registrados.</p>}
+          </DetailSection>
+
+          <DetailSection title="Récord Deportivo" className="print-break-before">
+            {student.records_deportivos && student.records_deportivos.length > 0 ? (
+                <table className="w-full text-left mt-4">
+                    <thead>
+                        <tr className="border-b bg-gray-50">
+                            <th className="p-3">Competencia</th>
+                            <th className="p-3">Fecha</th>
+                            <th className="p-3">Resultado</th>
+                            <th className="p-3">Puesto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {student.records_deportivos.map(record => (
+                            <tr key={record.id} className="border-b">
+                                <td className="p-3">{record.nombre_competencia}</td>
+                                <td className="p-3">{record.fecha_competencia}</td>
+                                <td className="p-3">{record.resultado}</td>
+                                <td className="p-3">{record.puesto}</td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            ) : <p>No hay récords deportivos registrados.</p>}
+          </DetailSection>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default StudentDetails;
