@@ -7,13 +7,13 @@
 -- ####################################################################
 CREATE OR REPLACE FUNCTION update_full_student(
     p_student_id UUID,
-    p_cedula VARCHAR(10),
     p_nombres_apellidos TEXT,
     p_fecha_nacimiento DATE,
     p_direccion TEXT,
     p_correo TEXT,
     p_carrera_id BIGINT,
     p_deporte_nombre TEXT,
+    p_cinta_color TEXT,
     p_ficha_medica JSONB,
     p_tests_fisicos_a_agregar JSONB,
     p_tests_fisicos_a_eliminar BIGINT[],
@@ -23,13 +23,13 @@ CREATE OR REPLACE FUNCTION update_full_student(
 RETURNS VOID AS $$
 DECLARE
     selected_deporte_id BIGINT;
+    selected_cinta_id BIGINT;
     test_item JSONB;
     record_item JSONB;
 BEGIN
     -- 1. Actualizar datos principales del estudiante
     UPDATE public.estudiantes
     SET
-        cedula = trim(p_cedula),
         nombres_apellidos = p_nombres_apellidos,
         fecha_nacimiento = p_fecha_nacimiento,
         direccion = p_direccion,
@@ -44,6 +44,16 @@ BEGIN
         IF FOUND THEN
             INSERT INTO public.estudiante_deportes (estudiante_id, deporte_id)
             VALUES (p_student_id, selected_deporte_id);
+        END IF;
+    END IF;
+
+    -- 2.5. Actualizar cinta (eliminar anterior e insertar nueva)
+    DELETE FROM public.estudiante_cintas WHERE estudiante_id = p_student_id;
+    IF p_cinta_color IS NOT NULL AND p_cinta_color <> '' THEN
+        SELECT id INTO selected_cinta_id FROM public.cinta_tipos WHERE color = p_cinta_color;
+        IF FOUND THEN
+            INSERT INTO public.estudiante_cintas (estudiante_id, cinta_tipo_id)
+            VALUES (p_student_id, selected_cinta_id);
         END IF;
     END IF;
 

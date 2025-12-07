@@ -114,7 +114,7 @@ const StudentList: React.FC = () => {
       {/* Encabezado y Botón de Crear */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Estudiantes</h1>
-        <Button onClick={() => navigate('/new-student')} className="flex items-center gap-2">
+        <Button onClick={() => navigate('/students/new')} className="flex items-center gap-2">
           <PlusCircle size={20} />
           Crear Estudiante
         </Button>

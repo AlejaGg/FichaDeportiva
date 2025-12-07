@@ -1,36 +1,37 @@
 import React from 'react';
-import { Route, Routes, Link } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import Home from './pages/Home';
-import NewStudent from './pages/NewStudent';
-import StudentDetails from './pages/StudentDetails';
-import StudentList from './pages/StudentList';
+import StudentList from './pages/StudentList'; // Asumo que tienes esta página
+import StudentForm from './pages/StudentForm'; // Asumo que tienes el formulario de registro/edición
+import StudentDetail from './pages/StudentDetail'; // La página de detalles que creamos
 
-const App: React.FC = () => {
-  return (
-    <div className="min-h-screen bg-gray-100 font-sans">
-      <header className="bg-white shadow">
-        <nav className="container mx-auto px-6 py-3">
-          <div className="flex justify-between items-center">
-            <Link to="/" className="text-xl font-semibold text-gray-700">Ficha Deportiva ESPOCH</Link>
-            <div className="flex space-x-4">
-              <Link to="/" className="py-2 px-3 text-gray-600 hover:text-gray-900">Inicio</Link>
-              <Link to="/new-student" className="py-2 px-3 text-gray-600 hover:text-gray-900">Registrar Estudiante</Link>
-              <Link to="/students" className="py-2 px-3 text-gray-600 hover:text-gray-900">Lista de Estudiantes</Link>
-            </div>
-          </div>
+function App() {
+  return (      <div className="min-h-screen bg-gray-100">
+        <nav className="bg-white shadow-md p-4 mb-8">
+          <Link to="/" className="text-xl font-bold text-blue-800 hover:text-blue-600">
+            Ficha Deportiva ESPOCH
+          </Link>
         </nav>
-      </header>
+        <main className="container mx-auto px-4">
+          <Routes>
+            {/* Ruta principal */}
+            <Route path="/" element={<Home />} />
+            
+            {/* Ruta para ver la lista de todos los estudiantes */}
+            <Route path="/students" element={<StudentList />} />
+            
+            {/* Ruta para el formulario de un nuevo estudiante */}
+            <Route path="/students/new" element={<StudentForm />} />
 
-      <main className="container mx-auto px-6 py-8">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/new-student" element={<NewStudent />} />
-          <Route path="/students" element={<StudentList />} />
-          <Route path="/student/:cedula" element={<StudentDetails />} />
-        </Routes>
-      </main>
-    </div>
+            {/* Ruta DINÁMICA para ver los detalles de UN estudiante específico. ¡Esta es la que necesitamos! */}
+            <Route path="/students/:cedula" element={<StudentDetail />} />
+
+            {/* Ruta DINÁMICA para EDITAR un estudiante. Reutiliza el mismo formulario. */}
+            <Route path="/students/edit/:cedula" element={<StudentForm />} />
+          </Routes>
+        </main>
+      </div>    
   );
-};
+}
 
 export default App;

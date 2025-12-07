@@ -63,6 +63,7 @@ const StudentForm: React.FC = () => {
   const [availableSports, setAvailableSports] = useState<DeporteName[]>([]);
   const [availableFacultades, setAvailableFacultades] = useState<Facultad[]>([]);
   const [availableCarreras, setAvailableCarreras] = useState<Carrera[]>([]);
+  const [availableCintas, setAvailableCintas] = useState<string[]>([]);
   
   // Unificar estado
   const [estudiante, setEstudiante] = useState<EstudianteState>({
@@ -75,6 +76,7 @@ const StudentForm: React.FC = () => {
     fecha_nacimiento: '',
   });
   const [selectedSport, setSelectedSport] = useState<DeporteName | ''>('');
+  const [selectedCinta, setSelectedCinta] = useState<string>('');
   const [fichaMedica, setFichaMedica] = useState<FichaMedicaState>({
     tipo_sangre: 'A+',
     patologias: '',
@@ -82,7 +84,7 @@ const StudentForm: React.FC = () => {
   });
   const [testsFisicos, setTestsFisicos] = useState<TestFisicoState[]>([]);
   const [records, setRecords] = useState<RecordDeportivoState[]>([]);
-  const [studentId, setStudentId] = useState<string | null>(null);
+  const [studentId, setStudentId] = useState<string | null>(null); // El tipo ya es correcto (string para UUID)
   const [testsToDelete, setTestsToDelete] = useState<number[]>([]);
   const [recordsToDelete, setRecordsToDelete] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -115,6 +117,16 @@ const StudentForm: React.FC = () => {
         if (carrerasError) console.error('Error fetching carreras:', carrerasError);
         else setAvailableCarreras(carrerasData || []);
     };
+
+    const fetchCintas = async () => {
+      const { data, error } = await supabase.from('cinta_tipos').select('color').order('id');
+      if (error) {
+        console.error('Error fetching cintas:', error);
+      } else {
+        setAvailableCintas(data.map(c => c.color));
+      }
+    };
+    fetchCintas();
     fetchFacultadesAndCarreras();
   }, []);
 
@@ -145,6 +157,7 @@ const StudentForm: React.FC = () => {
           fecha_nacimiento: data.fecha_nacimiento ? new Date(data.fecha_nacimiento).toISOString().split('T')[0] : '',
         });
         setSelectedSport(data.deportes?.[0] || ''); // Asume que un estudiante tiene un solo deporte
+        setSelectedCinta(data.cintas?.[0] || ''); // Asume que un estudiante tiene una sola cinta
         if (data.ficha_medica) {
           setFichaMedica({
             tipo_sangre: data.ficha_medica.tipo_sangre || 'A+',
@@ -217,7 +230,7 @@ const StudentForm: React.FC = () => {
       nombre_competencia: '',
       fecha_competencia: '',
       resultado: 'otro', // CORRECCIÓN: El ENUM en la DB espera valores en minúscula.
-      puesto: '',
+      puesto: 0,
     }]);
   };
 
@@ -270,6 +283,7 @@ const StudentForm: React.FC = () => {
             p_correo: estudiante.correo,
             p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
             p_deporte_nombre: selectedSport,
+            p_cinta_color: selectedCinta,
             p_ficha_medica: fichaMedicaPayload,
             p_tests_fisicos_a_agregar: testsFisicos.filter(t => !t.id), // Solo los nuevos
             p_tests_fisicos_a_eliminar: testsToDelete,
@@ -289,6 +303,7 @@ const StudentForm: React.FC = () => {
             p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
             p_deporte_nombre: selectedSport,
             p_ficha_medica: fichaMedicaPayload,
+            p_cinta_color: selectedCinta,
             p_tests_fisicos: testsFisicos,
             p_records_deportivos: recordsDeportivosPayload,
         });
@@ -337,6 +352,16 @@ const StudentForm: React.FC = () => {
           {availableSports.map(sport => (
             <option key={sport} value={sport}>{sport}</option>
           ))}
+        </Select>
+        <Select
+          label="Seleccione una Cinta"
+          id="cinta"
+          name="cinta"
+          value={selectedCinta}
+          onChange={(e) => setSelectedCinta(e.target.value)}
+        >
+          <option value="">Ninguna</option>
+          {availableCintas.map(cinta => <option key={cinta} value={cinta}>{cinta}</option>)}
         </Select>
       </FormSection>
 

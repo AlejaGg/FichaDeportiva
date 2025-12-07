@@ -23,13 +23,18 @@ const Home: React.FC = () => {
     try {
       // Llamar a la función RPC para obtener los detalles completos del estudiante
       const { data, error } = await supabase.rpc('get_student_full_details', { p_cedula: cedula });
+      
+      // ¡AQUÍ ESTÁ EL CONSOLE.LOG QUE PEDISTE!
+      // Revisa la consola de tu navegador (F12) para ver qué devuelve Supabase.
+      console.log('Respuesta de Supabase:', data);
 
+      // Si Supabase devuelve un error en la llamada RPC, lo lanzamos para que lo capture el bloque catch.
       if (error) {
         throw error;
       }
 
-      // CORRECCIÓN: La función RPC devuelve un objeto vacío {} si no encuentra nada.
-      // Debemos verificar si el objeto tiene propiedades (como 'id') para confirmar que se encontró un estudiante.
+      // CORRECCIÓN: Tu función RPC devuelve un objeto. Si no encuentra nada, devuelve un objeto vacío {}.
+      // Verificamos si el objeto tiene la propiedad 'id' para confirmar que se encontró un estudiante.
       if (data && data.id) {
         // Si se encuentra el estudiante, navegar a la página de detalles
         navigate(`/students/${cedula}`);
@@ -38,7 +43,11 @@ const Home: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Error al buscar estudiante:', err);
-      setError(`Error al buscar estudiante: ${err.message || 'Error desconocido'}`);
+      // Mostramos un mensaje más amigable al usuario y guardamos el detalle en la consola.
+      // El error puede venir de la red o de la propia función de Supabase.
+      setError(
+        err.message.includes('permission denied') ? 'Error de permisos en la base de datos.' : 'No se pudo conectar con el servidor. Inténtalo de nuevo.'
+      );
     } finally {
       setLoading(false);
     }

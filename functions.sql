@@ -12,6 +12,7 @@ CREATE OR REPLACE FUNCTION create_full_student(
     p_correo TEXT,
     p_carrera_id BIGINT,
     p_deporte_nombre TEXT,
+    p_cinta_color TEXT,
     p_ficha_medica JSONB,
     p_tests_fisicos JSONB, -- Renombrado para mayor claridad
     p_records_deportivos JSONB
@@ -20,6 +21,7 @@ RETURNS UUID AS $
 DECLARE
     new_student_id UUID;
     selected_deporte_id BIGINT;
+    selected_cinta_id BIGINT;
     record_item JSONB;
     test_item JSONB;
 BEGIN
@@ -36,6 +38,15 @@ BEGIN
         END IF;
         INSERT INTO public.estudiante_deportes (estudiante_id, deporte_id)
         VALUES (new_student_id, selected_deporte_id);
+    END IF;
+
+    -- 2.5. Asociar estudiante con una cinta
+    IF p_cinta_color IS NOT NULL AND p_cinta_color <> '' THEN
+        SELECT id INTO selected_cinta_id FROM public.cinta_tipos WHERE color = p_cinta_color;
+        IF FOUND THEN
+            INSERT INTO public.estudiante_cintas (estudiante_id, cinta_tipo_id)
+            VALUES (new_student_id, selected_cinta_id);
+        END IF;
     END IF;
 
     -- 3. Insertar ficha médica
@@ -129,6 +140,15 @@ BEGIN
                 FROM public.estudiante_deportes ed
                 JOIN public.deportes d ON ed.deporte_id = d.id
                 WHERE ed.estudiante_id = e.id
+            ),
+            '[]'::jsonb
+        ),
+        'cintas', COALESCE(
+            (
+                SELECT jsonb_agg(ct.color)
+                FROM public.estudiante_cintas ec
+                JOIN public.cinta_tipos ct ON ec.cinta_tipo_id = ct.id
+                WHERE ec.estudiante_id = e.id
             ),
             '[]'::jsonb
         ),

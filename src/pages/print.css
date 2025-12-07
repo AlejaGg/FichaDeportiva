@@ -1,48 +1,49 @@
-/* /src/pages/print.css */
+/* src/print.css */
 
 @media print {
-  /* Oculta elementos que no deben imprimirse, como la barra de navegación y los formularios de búsqueda/botones */
+  /* Oculta elementos que no queremos en el PDF */
   .no-print,
-  header,
-  nav {
+  nav,
+  .no-print * {
     display: none !important;
   }
 
-  /* Asegura que el área de impresión ocupe todo el espacio */
-  body,
-  #root,
+  /* Muestra el encabezado formal solo al imprimir */
+  .print-only-header {
+    display: block !important;
+  }
+
+  /* Ajustes generales para la página impresa */
+  body {
+    background-color: #fff;
+    font-size: 11pt; /* Tamaño de letra legible para documentos */
+  }
+
+  /* Asegura que el área de impresión ocupe todo el espacio y sin estilos de pantalla */
   .printable-area {
     width: 100%;
     margin: 0;
     padding: 0;
-    font-size: 12pt;
-    background-color: #fff !important; /* Fondo blanco para ahorrar tinta */
-    color: #000 !important; /* Texto negro */
-  }
-
-  /* Elimina sombras, bordes innecesarios y fondos de color de las secciones de detalle */
-  .printable-area div[id="student-record"] > div {
     box-shadow: none;
-    border: 1px solid #ccc;
-    background-color: #fff !important;
+    border: none;
   }
 
-  /* Estilo para los títulos de sección en la impresión */
-  .printable-area h1,
+  /* Estilos para los títulos de sección en la impresión */
   .printable-area h2 {
+    background-color: #e9ecef !important; /* Un gris muy claro para los encabezados */
     color: #000 !important;
-    background-color: #fff !important;
+    -webkit-print-color-adjust: exact; /* Fuerza la impresión de colores de fondo en Chrome/Safari */
+    color-adjust: exact; /* Estándar */
+  }
+
+  /* Evita saltos de página inoportunos dentro de las secciones */
+  .DetailSection {
+    page-break-inside: avoid;
   }
 
   /* Forzar un salto de página antes de una sección si es necesario */
   .print-break-before {
     page-break-before: always;
-  }
-  
-  /* Asegura que los enlaces no se muestren con el color azul por defecto */
-  a {
-      text-decoration: none;
-      color: #000;
   }
 
   /* Estilos para la tabla en modo de impresión */
@@ -51,13 +52,12 @@
     border-collapse: collapse;
   }
   
-  .printable-area th,
-  .printable-area td {
+  .printable-area th, .printable-area td {
     border: 1px solid #ddd;
     padding: 8px;
   }
 
   .printable-area th {
-    background-color: #f2f2f2 !important; /* Un gris muy claro para los encabezados */
+    background-color: #e9ecef !important;
   }
 }
