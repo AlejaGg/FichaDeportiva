@@ -28,7 +28,9 @@ const Home: React.FC = () => {
         throw error;
       }
 
-      if (data) {
+      // CORRECCIÓN: La función RPC devuelve un objeto vacío {} si no encuentra nada.
+      // Debemos verificar si el objeto tiene propiedades (como 'id') para confirmar que se encontró un estudiante.
+      if (data && data.id) {
         // Si se encuentra el estudiante, navegar a la página de detalles
         navigate(`/students/${cedula}`);
       } else {

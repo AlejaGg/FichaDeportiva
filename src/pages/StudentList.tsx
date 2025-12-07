@@ -11,8 +11,10 @@ type StudentListItem = {
   id: string;
   cedula: string;
   nombres_apellidos: string;
+  edad: number | null;
   carrera: string | null;
   deportes: string[] | null;
+  cintas: string[] | null;
 };
 
 const StudentList: React.FC = () => {
@@ -24,15 +26,21 @@ const StudentList: React.FC = () => {
   // Estados para la búsqueda y filtros
   const [searchTerm, setSearchTerm] = useState('');
   const [carreraFilter, setCarreraFilter] = useState('');
+  const [sportFilter, setSportFilter] = useState('');
+  const [cintaFilter, setCintaFilter] = useState('');
+
   const [allCarreras, setAllCarreras] = useState<string[]>([]);
+  const [allDeportes, setAllDeportes] = useState<string[]>([]);
+  const [allCintas, setAllCintas] = useState<string[]>([]);
 
   // Obtener la lista de estudiantes
   useEffect(() => {
     const fetchStudents = async () => {
       setLoading(true);
       const { data, error } = await supabase
-        .from('estudiantes_vista') // Usamos una vista para obtener datos denormalizados
-        .select('id, cedula, nombres_apellidos, carrera, deportes');
+        // Usamos la nueva vista completa
+        .from('vista_lista_estudiantes_completa')
+        .select('*');
 
       if (error) {
         console.error('Error fetching students:', error);
@@ -45,8 +53,8 @@ const StudentList: React.FC = () => {
 
     fetchStudents();
 
-    // Cargar todas las carreras para el filtro
-    const fetchCarreras = async () => {
+    // Cargar datos para los filtros
+    const fetchFilterData = async () => {
       const { data, error } = await supabase
         .from('carreras')
         .select('nombre')
@@ -54,19 +62,37 @@ const StudentList: React.FC = () => {
       if (!error && data) {
         setAllCarreras(data.map(c => c.nombre));
       }
+
+      const { data: deportesData, error: deportesError } = await supabase
+        .from('deportes')
+        .select('nombre')
+        .order('nombre');
+      if (!deportesError && deportesData) {
+        setAllDeportes(deportesData.map(d => d.nombre));
+      }
+
+      const { data: cintasData, error: cintasError } = await supabase
+        .from('cinta_tipos')
+        .select('color')
+        .order('color');
+      if (!cintasError && cintasData) {
+        setAllCintas(cintasData.map(c => c.color));
+      }
     };
-    fetchCarreras();
+    fetchFilterData();
   }, []);
 
   // Lógica para filtrar estudiantes
   const filteredStudents = useMemo(() => {
     return students.filter(student => {
-      const matchesSearch = student.cedula.includes(searchTerm) || 
-                            student.nombres_apellidos.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = student.cedula.includes(searchTerm) ||
+        student.nombres_apellidos.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCarrera = !carreraFilter || student.carrera === carreraFilter;
-      return matchesSearch && matchesCarrera;
+      const matchesSport = !sportFilter || (student.deportes && student.deportes.includes(sportFilter));
+      const matchesCinta = !cintaFilter || (student.cintas && student.cintas.includes(cintaFilter));
+      return matchesSearch && matchesCarrera && matchesSport && matchesCinta;
     });
-  }, [students, searchTerm, carreraFilter]);
+  }, [students, searchTerm, carreraFilter, sportFilter, cintaFilter]);
 
   const handleDelete = async (studentId: string, studentName: string) => {
     if (window.confirm(`¿Estás seguro de que quieres eliminar a ${studentName}? Esta acción no se puede deshacer.`)) {
@@ -88,7 +114,7 @@ const StudentList: React.FC = () => {
       {/* Encabezado y Botón de Crear */}
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold text-gray-800">Gestión de Estudiantes</h1>
-        <Button onClick={() => navigate('/students/new')} className="flex items-center gap-2">
+        <Button onClick={() => navigate('/new-student')} className="flex items-center gap-2">
           <PlusCircle size={20} />
           Crear Estudiante
         </Button>
@@ -96,7 +122,7 @@ const StudentList: React.FC = () => {
 
       {/* Filtros y Búsqueda */}
       <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <div className="relative">
             <Input
               type="text"
@@ -115,6 +141,22 @@ const StudentList: React.FC = () => {
             <option value="">Todas las Carreras</option>
             {allCarreras.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
+          <select
+            value={sportFilter}
+            onChange={(e) => setSportFilter(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Todos los Deportes</option>
+            {allDeportes.map(d => <option key={d} value={d}>{d}</option>)}
+          </select>
+          <select
+            value={cintaFilter}
+            onChange={(e) => setCintaFilter(e.target.value)}
+            className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          >
+            <option value="">Todas las Cintas</option>
+            {allCintas.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
         </div>
       </div>
 
@@ -130,8 +172,10 @@ const StudentList: React.FC = () => {
               <tr>
                 <th className="p-4 font-semibold">Cédula</th>
                 <th className="p-4 font-semibold">Nombres y Apellidos</th>
+                <th className="p-4 font-semibold">Edad</th>
                 <th className="p-4 font-semibold">Carrera</th>
                 <th className="p-4 font-semibold">Deportes</th>
+                <th className="p-4 font-semibold">Cintas</th>
                 <th className="p-4 font-semibold text-center">Acciones</th>
               </tr>
             </thead>
@@ -141,8 +185,10 @@ const StudentList: React.FC = () => {
                   <tr key={student.id} className="border-b border-gray-200 hover:bg-gray-50">
                     <td className="p-4">{student.cedula}</td>
                     <td className="p-4">{student.nombres_apellidos}</td>
+                    <td className="p-4">{student.edad ?? 'N/A'}</td>
                     <td className="p-4">{student.carrera ?? 'N/A'}</td>
                     <td className="p-4">{student.deportes?.join(', ') ?? 'N/A'}</td>
+                    <td className="p-4">{student.cintas?.join(', ') ?? 'N/A'}</td>
                     <td className="p-4">
                       <div className="flex justify-center items-center gap-2">
                         <button onClick={() => navigate(`/students/${student.cedula}`)} title="Ver Ficha" className="text-blue-600 hover:text-blue-800">
@@ -160,7 +206,7 @@ const StudentList: React.FC = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={5} className="text-center p-8 text-gray-500">
+                  <td colSpan={7} className="text-center p-8 text-gray-500">
                     No se encontraron estudiantes que coincidan con los filtros.
                   </td>
                 </tr>

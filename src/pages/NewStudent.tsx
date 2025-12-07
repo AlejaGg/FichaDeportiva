@@ -13,8 +13,8 @@ type FormState = {
     nombres_apellidos: string;
     direccion: string;
     correo: string;
-    carrera: string;
-    facultad: string;
+    carrera_id: number | '';
+    facultad_id: number | '';
     fecha_nacimiento: string;
   };
   fichaMedica: {
@@ -31,6 +31,16 @@ type FormState = {
 }>;
 };
 
+// Types for data fetched from DB
+type Facultad = { id: number; nombre: string };
+type Carrera = { id: number; nombre: string; facultad_id: number };
+type CintaTipo = { id: number; color: string };
+
+type DataSources = {
+  facultades: Facultad[];
+  carreras: Carrera[];
+  cintaTipos: CintaTipo[];
+};
 // Helper component for form sections
 const FormSection: React.FC<{ title: string; children: React.ReactNode, actionButton?: React.ReactNode }> = ({ title, children, actionButton }) => (
     <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
@@ -50,6 +60,13 @@ const NewStudent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [availableSports, setAvailableSports] = useState<DeporteName[]>([]);
   const [selectedSport, setSelectedSport] = useState<DeporteName | ''>('');
+  const [selectedCintaId, setSelectedCintaId] = useState<number | ''>('');
+
+  const [dataSources, setDataSources] = useState<DataSources>({
+    facultades: [],
+    carreras: [],
+    cintaTipos: [],
+  });
 
   const [formState, setFormState] = useState<FormState>({
     estudiante: {
@@ -57,8 +74,8 @@ const NewStudent: React.FC = () => {
       nombres_apellidos: '',
       direccion: '',
       correo: '',
-      carrera: '',
-      facultad: '',
+      carrera_id: '',
+      facultad_id: '',
       fecha_nacimiento: '',
     },
     fichaMedica: { tipo_sangre: '', patologias: '', ultima_consulta_medica: '' },
@@ -67,22 +84,47 @@ const NewStudent: React.FC = () => {
   });
 
   useEffect(() => {
-    const fetchSports = async () => {
-      const { data, error } = await supabase
-        .from('deportes')
-        .select('nombre');
-      if (error) {
-        console.error('Error fetching sports:', error);
-      } else {
-        const sportNames = data.map(d => d.nombre as DeporteName);
+    const fetchInitialData = async () => {
+      // La verificación de sesión ahora la hace ProtectedRoute
+      try {
+        setLoading(true);
+        const [sportsRes, facultadesRes, carrerasRes, cintasRes] = await Promise.all([
+          supabase.from('deportes').select('nombre'),
+          supabase.from('facultades').select('id, nombre'),
+          supabase.from('carreras').select('id, nombre, facultad_id'),
+          supabase.from('cinta_tipos').select('id, color'),
+        ]);
+
+        if (sportsRes.error) throw sportsRes.error;
+        const sportNames = sportsRes.data.map(d => d.nombre as DeporteName);
         setAvailableSports(sportNames);
-        if (sportNames.length > 0) {
-          setSelectedSport(sportNames[0]); // Select first sport by default
-        }
+        if (sportNames.length > 0) setSelectedSport(sportNames[0]);
+
+        if (facultadesRes.error) throw facultadesRes.error;
+        if (carrerasRes.error) throw carrerasRes.error;
+        if (cintasRes.error) throw cintasRes.error;
+
+        setDataSources({
+          facultades: facultadesRes.data || [],
+          carreras: carrerasRes.data || [],
+          cintaTipos: cintasRes.data || [],
+        });
+
+      } catch (err: any) {
+        console.error('Error fetching initial data:', err);
+        setError('No se pudieron cargar los datos necesarios para el formulario.');
+      } finally {
+        setLoading(false);
       }
     };
-    fetchSports();
+
+    fetchInitialData();
   }, []);
+
+  // Filter careers based on selected faculty
+  const availableCarreras = dataSources.carreras.filter(
+    c => c.facultad_id === formState.estudiante.facultad_id
+  );
 
   const handleInputChange = <T extends keyof FormState>(section: T, name: keyof FormState[T], value: any) => {
     setFormState(prevState => ({
@@ -92,6 +134,12 @@ const NewStudent: React.FC = () => {
         [name]: value,
       },
     }));
+  };
+
+  const handleFacultyChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newFacultyId = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+    handleInputChange('estudiante', 'facultad_id', newFacultyId);
+    handleInputChange('estudiante', 'carrera_id', ''); // Reset career when faculty changes
   };
 
   const handleTestFisicoChange = (index: number, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -135,7 +183,7 @@ const NewStudent: React.FC = () => {
     const newRecord = {
       nombre_competencia: '',
       fecha_competencia: '',
-      resultado: RESULTADOS_COMPETENCIA[0],
+      resultado: RESULTADOS_COMPETENCIA[3], // CORREGIDO: Usar 'otro' del array, que es el valor esperado por el ENUM.
       puesto: '',
     };
     setFormState(prevState => ({ ...prevState, records: [...prevState.records, newRecord] }));
@@ -183,9 +231,10 @@ const NewStudent: React.FC = () => {
         p_fecha_nacimiento: estudiante.fecha_nacimiento,
         p_direccion: estudiante.direccion,
         p_correo: estudiante.correo,
-        p_carrera: estudiante.carrera,
-        p_facultad: estudiante.facultad,
+        p_facultad_id: estudiante.facultad_id === '' ? null : estudiante.facultad_id,
+        p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
         p_deporte_nombre: selectedSport,
+        p_cinta_tipo_id: selectedCintaId === '' ? null : selectedCintaId,
         p_ficha_medica: fichaMedicaPayload,
         p_tests_fisicos: testsFisicos,
         p_records_deportivos: recordsDeportivosPayload,
@@ -234,6 +283,18 @@ const NewStudent: React.FC = () => {
             <option key={sport} value={sport}>{sport}</option>
           ))}
         </Select>
+        <Select
+          label="Cinta"
+          id="cinta"
+          name="cinta"
+          value={selectedCintaId}
+          onChange={(e) => setSelectedCintaId(e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+        >
+          <option value="">Seleccione cinta (si aplica)</option>
+          {dataSources.cintaTipos.map(cinta => (
+            <option key={cinta.id} value={cinta.id}>{cinta.color}</option>
+          ))}
+        </Select>
       </FormSection>
 
       {/* Datos Personales */}
@@ -242,8 +303,18 @@ const NewStudent: React.FC = () => {
         <Input label="Nombres y Apellidos" id="nombres_apellidos" name="nombres_apellidos" value={formState.estudiante.nombres_apellidos} onChange={e => handleInputChange('estudiante', 'nombres_apellidos', e.target.value)} required />
         <Input label="Dirección" id="direccion" name="direccion" value={formState.estudiante.direccion} onChange={e => handleInputChange('estudiante', 'direccion', e.target.value)} required />
         <Input label="Correo Electrónico" id="correo" name="correo" type="email" value={formState.estudiante.correo} onChange={e => handleInputChange('estudiante', 'correo', e.target.value)} required />
-        <Input label="Carrera" id="carrera" name="carrera" value={formState.estudiante.carrera} onChange={e => handleInputChange('estudiante', 'carrera', e.target.value)} required />
-        <Input label="Facultad" id="facultad" name="facultad" value={formState.estudiante.facultad} onChange={e => handleInputChange('estudiante', 'facultad', e.target.value)} required />
+        <Select label="Facultad" id="facultad" name="facultad_id" value={formState.estudiante.facultad_id} onChange={handleFacultyChange} required>
+          <option value="" disabled>Seleccione una facultad...</option>
+          {dataSources.facultades.map(fac => (
+            <option key={fac.id} value={fac.id}>{fac.nombre}</option>
+          ))}
+        </Select>
+        <Select label="Carrera" id="carrera" name="carrera_id" value={formState.estudiante.carrera_id} onChange={e => handleInputChange('estudiante', 'carrera_id', e.target.value === '' ? '' : parseInt(e.target.value, 10))} required disabled={!formState.estudiante.facultad_id}>
+          <option value="" disabled>Seleccione una carrera...</option>
+          {availableCarreras.map(car => (
+            <option key={car.id} value={car.id}>{car.nombre}</option>
+          ))}
+        </Select>
         <Input label="Fecha de Nacimiento" id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={formState.estudiante.fecha_nacimiento} onChange={e => handleInputChange('estudiante', 'fecha_nacimiento', e.target.value)} required />
       </FormSection>
 

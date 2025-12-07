@@ -8,11 +8,12 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 // Helper types for form state
 type EstudianteState = {
-  cedula: string;
+  cedula: string; // La cédula no debe cambiar en modo edición
   nombres_apellidos: string;
   direccion: string;
   correo: string;
   carrera_id: number | '';
+  facultad_id: number | '';
   fecha_nacimiento: string;
 };
 
@@ -60,19 +61,20 @@ const StudentForm: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [availableSports, setAvailableSports] = useState<DeporteName[]>([]);
-  const [selectedSport, setSelectedSport] = useState<DeporteName | ''>('');
   const [availableFacultades, setAvailableFacultades] = useState<Facultad[]>([]);
   const [availableCarreras, setAvailableCarreras] = useState<Carrera[]>([]);
-  const [selectedFacultad, setSelectedFacultad] = useState<number | ''>('');
-
+  
+  // Unificar estado
   const [estudiante, setEstudiante] = useState<EstudianteState>({
     cedula: '',
     nombres_apellidos: '',
     direccion: '',
     correo: '',
     carrera_id: '',
+    facultad_id: '',
     fecha_nacimiento: '',
   });
+  const [selectedSport, setSelectedSport] = useState<DeporteName | ''>('');
   const [fichaMedica, setFichaMedica] = useState<FichaMedicaState>({
     tipo_sangre: 'A+',
     patologias: '',
@@ -83,6 +85,10 @@ const StudentForm: React.FC = () => {
   const [studentId, setStudentId] = useState<string | null>(null);
   const [testsToDelete, setTestsToDelete] = useState<number[]>([]);
   const [recordsToDelete, setRecordsToDelete] = useState<number[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  // Carreras filtradas basadas en la facultad seleccionada
+  const filteredCarreras = availableCarreras.filter(c => c.facultad_id === estudiante.facultad_id);
 
 
   useEffect(() => {
@@ -134,11 +140,11 @@ const StudentForm: React.FC = () => {
           nombres_apellidos: data.nombres_apellidos || '',
           direccion: data.direccion || '',
           correo: data.correo || '',
-          carrera_id: carrera?.id || '',
+          carrera_id: data.carrera_id || '',
+          facultad_id: data.facultad_id || '',
           fecha_nacimiento: data.fecha_nacimiento ? new Date(data.fecha_nacimiento).toISOString().split('T')[0] : '',
         });
-        setSelectedFacultad(carrera?.facultad_id || '');
-        setSelectedSport(data.deportes?.[0] || '');
+        setSelectedSport(data.deportes?.[0] || ''); // Asume que un estudiante tiene un solo deporte
         if (data.ficha_medica) {
           setFichaMedica({
             tipo_sangre: data.ficha_medica.tipo_sangre || 'A+',
@@ -155,8 +161,10 @@ const StudentForm: React.FC = () => {
 
 
 
-  const handleEstudianteChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEstudiante({ ...estudiante, [e.target.name]: e.target.value });
+  const handleEstudianteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    const finalValue = name === 'carrera_id' || name === 'facultad_id' ? (value === '' ? '' : Number(value)) : value;
+    setEstudiante({ ...estudiante, [name]: finalValue });
   };
 
   const handleFichaMedicaChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -172,7 +180,7 @@ const StudentForm: React.FC = () => {
 
   const addTestFisico = () => {
     setTestsFisicos([...testsFisicos, {
-      categoria: 'Velocidad', // Corregido: Usar mayúscula inicial para coincidir con el ENUM y el Select
+      categoria: CATEGORIAS_PRUEBA[0], // CORREGIDO: Usar el valor del array ('Velocidad') en lugar de un string en minúscula.
       prueba: '',
       unidad: '',
       resultado: '',
@@ -208,7 +216,7 @@ const StudentForm: React.FC = () => {
     setRecords([...records, {
       nombre_competencia: '',
       fecha_competencia: '',
-      resultado: 'OTRO',
+      resultado: 'otro', // CORRECCIÓN: El ENUM en la DB espera valores en minúscula.
       puesto: '',
     }]);
   };
@@ -224,6 +232,7 @@ const StudentForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError(null);
     if (!estudiante.cedula && !isEditMode) {
       alert('La cédula es obligatoria.');
       return;
@@ -255,12 +264,11 @@ const StudentForm: React.FC = () => {
         // Lógica de actualización
         const result = await supabase.rpc('update_full_student', {
             p_student_id: studentId,
-            p_cedula: estudiante.cedula,
             p_nombres_apellidos: estudiante.nombres_apellidos,
             p_fecha_nacimiento: estudiante.fecha_nacimiento,
             p_direccion: estudiante.direccion,
             p_correo: estudiante.correo,
-            p_carrera_id: estudiante.carrera_id,
+            p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
             p_deporte_nombre: selectedSport,
             p_ficha_medica: fichaMedicaPayload,
             p_tests_fisicos_a_agregar: testsFisicos.filter(t => !t.id), // Solo los nuevos
@@ -277,7 +285,8 @@ const StudentForm: React.FC = () => {
             p_fecha_nacimiento: estudiante.fecha_nacimiento,
             p_direccion: estudiante.direccion,
             p_correo: estudiante.correo,
-            p_carrera_id: estudiante.carrera_id,
+            p_facultad_id: estudiante.facultad_id === '' ? null : estudiante.facultad_id,
+            p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
             p_deporte_nombre: selectedSport,
             p_ficha_medica: fichaMedicaPayload,
             p_tests_fisicos: testsFisicos,
@@ -296,9 +305,9 @@ const StudentForm: React.FC = () => {
     } catch (error: any) {
       console.error('Error al registrar:', error);
       if (error.message.includes('duplicate key value violates unique constraint "estudiantes_cedula_key"')) {
-        alert('Error: La cédula ingresada ya existe en la base de datos.');
+        setError('Error: La cédula ingresada ya existe en la base de datos.');
       } else {
-        alert(`Error al registrar el estudiante: ${error.message}`);
+        setError(`Error al ${isEditMode ? 'actualizar' : 'registrar'} el estudiante: ${error.message}`);
       }
     } finally {
       setLoading(false);
@@ -307,6 +316,11 @@ const StudentForm: React.FC = () => {
 
   return (
     <form onSubmit={handleSubmit}>
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
       <h1 className="text-3xl font-bold mb-6">{isEditMode ? 'Editar Estudiante' : 'Registrar Nuevo Estudiante'}</h1>
 
       {/* Deporte Section */}
@@ -332,15 +346,13 @@ const StudentForm: React.FC = () => {
         <Input label="Nombres y Apellidos" id="nombres_apellidos" name="nombres_apellidos" value={estudiante.nombres_apellidos} onChange={handleEstudianteChange} required />
         <Input label="Dirección" id="direccion" name="direccion" value={estudiante.direccion} onChange={handleEstudianteChange} required />
         <Input label="Correo Electrónico" id="correo" name="correo" type="email" value={estudiante.correo} onChange={handleEstudianteChange} required />
-        <Select label="Facultad" id="facultad" name="facultad" value={selectedFacultad} onChange={e => setSelectedFacultad(Number(e.target.value))} required>
+        <Select label="Facultad" id="facultad_id" name="facultad_id" value={estudiante.facultad_id} onChange={handleEstudianteChange} required>
             <option value="" disabled>Seleccione...</option>
             {availableFacultades.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
         </Select>
-        <Select label="Carrera" id="carrera_id" name="carrera_id" value={estudiante.carrera_id} onChange={e => setEstudiante({...estudiante, carrera_id: Number(e.target.value)})} required disabled={!selectedFacultad}>
+        <Select label="Carrera" id="carrera_id" name="carrera_id" value={estudiante.carrera_id} onChange={handleEstudianteChange} required disabled={!estudiante.facultad_id}>
             <option value="" disabled>Seleccione una facultad primero...</option>
-            {availableCarreras
-                .filter(c => c.facultad_id === selectedFacultad)
-                .map(c => (
+            {filteredCarreras.map(c => (
                     <option key={c.id} value={c.id}>
                         {c.nombre}
                     </option>
