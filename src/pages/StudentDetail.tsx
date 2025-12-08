@@ -15,6 +15,7 @@ interface TestFisico {
   unidad: string;
   resultado: string;
   created_at: string; // timestamp
+  fecha_prueba: string; // 'YYYY-MM-DD'
 }
 
 interface RecordDeportivo {
@@ -33,15 +34,34 @@ interface RawEstudiante {
   fecha_nacimiento: string;
   direccion: string;
   correo: string;
-  carrera: string;
-  facultad: string;
-  // puedes añadir más campos si luego los usas
+  carrera_id: number | null;
+  facultad_id: number | null;
+}
+
+interface RawCarrera {
+  id: number;
+  nombre: string;
+  facultad_id: number;
+}
+
+interface RawFacultad {
+  id: number;
+  nombre: string;
 }
 
 interface RawDeporteItem {
-  estudiante_deporte: any; // no lo usas en el front por ahora
+  estudiante_deporte: any; // si luego quieres, lo tipamos mejor
   deporte: { id: number; nombre: string };
-  cinta_tipo: { id: number; nombre: string } | null;
+  // OJO: ahora la función devuelve { id, color }, no { id, nombre }
+  cinta_tipo: { id: number; color: string } | null;
+}
+
+// Nuevo: tipo para el campo aplanado 'cintas'
+interface RawCintaItem {
+  deporte_id: number;
+  deporte_nombre: string;
+  cinta_tipo_id: number | null;
+  cinta_color: string | null;
 }
 
 interface GetStudentFullDetailsData {
@@ -50,6 +70,9 @@ interface GetStudentFullDetailsData {
   ficha_medica: FichaMedica | null;
   tests_fisicos: TestFisico[];
   records_deportivos: RecordDeportivo[];
+  carrera: RawCarrera | null;
+  facultad: RawFacultad | null;
+  cintas: RawCintaItem[]; // <- NUEVO: viene del campo 'cintas' de tu función
 }
 
 interface GetStudentFullDetailsResponse {
@@ -71,7 +94,7 @@ interface StudentDetails {
   ficha_medica: FichaMedica | null;
   tests_fisicos: TestFisico[];
   deportes: string[];
-  cintas: string[] | null;
+  cintas: string[] | null; // aquí guardamos solo los colores o "Deporte - Color"
   records_deportivos: RecordDeportivo[];
 }
 
@@ -111,12 +134,27 @@ const calcularEdad = (fechaNacimiento: string): number => {
 
 // Mapea lo que devuelve la función PL/pgSQL a StudentDetails
 const mapToStudentDetails = (payload: GetStudentFullDetailsData): StudentDetails => {
-  const { estudiante, deportes, ficha_medica, tests_fisicos, records_deportivos } = payload;
+  const {
+    estudiante,
+    deportes,
+    ficha_medica,
+    tests_fisicos,
+    records_deportivos,
+    carrera,
+    facultad,
+    cintas,
+  } = payload;
 
   const deportesNombres = deportes?.map(d => d.deporte.nombre) ?? [];
-  const cintasNombres = deportes
-    ?.map(d => d.cinta_tipo?.nombre)
-    .filter((c): c is string => Boolean(c)) ?? null;
+
+  // Usamos el campo 'cintas' aplanado para obtener colores por deporte
+  // Ejemplo de salida: ["Taekwondo - Cinta amarilla", "Judo - Cinta verde"]
+  const cintasNombres =
+    cintas && cintas.length > 0
+      ? cintas
+          .filter(c => c.cinta_color) // solo con color
+          .map(c => `${c.deporte_nombre} - ${c.cinta_color}`)
+      : null;
 
   return {
     id: estudiante.id,
@@ -125,8 +163,8 @@ const mapToStudentDetails = (payload: GetStudentFullDetailsData): StudentDetails
     fecha_nacimiento: estudiante.fecha_nacimiento,
     direccion: estudiante.direccion,
     correo: estudiante.correo,
-    carrera: estudiante.carrera,
-    facultad: estudiante.facultad,
+    carrera: carrera?.nombre ?? 'No registrada',
+    facultad: facultad?.nombre ?? 'No registrada',
     edad: calcularEdad(estudiante.fecha_nacimiento),
     ficha_medica: ficha_medica,
     tests_fisicos,
@@ -265,7 +303,7 @@ const StudentDetail: React.FC = () => {
                     <th className="p-3 font-semibold">Categoría</th>
                     <th className="p-3 font-semibold">Prueba</th>
                     <th className="p-3 font-semibold">Resultado</th>
-                    <th className="p-3 font-semibold">Fecha</th>
+                    <th className="p-3 font-semibold">Fecha prueba</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -277,7 +315,7 @@ const StudentDetail: React.FC = () => {
                         {test.resultado} {test.unidad}
                       </td>
                       <td className="p-3">
-                        {new Date(test.created_at).toLocaleDateString()}
+                        {new Date(test.fecha_prueba).toLocaleDateString()}
                       </td>
                     </tr>
                   ))}
