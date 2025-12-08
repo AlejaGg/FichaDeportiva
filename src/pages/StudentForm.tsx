@@ -135,48 +135,56 @@ const StudentForm: React.FC = () => {
     if (isEditMode && cedula && availableCarreras.length > 0) {
       const fetchStudentData = async () => {
         setLoading(true);
-        const { data, error } = await supabase.rpc('get_student_full_details', { p_cedula: cedula });
+        const { data, error: clientError } = await supabase.rpc('get_student_full_details', { p_cedula: cedula });
         setLoading(false);
 
-        if (error || !data || Object.keys(data).length === 0) {
-          alert('No se pudo cargar la información del estudiante o no existe.');
+        if (clientError || (data && data.error)) {
+          const errorMessage = clientError?.message || data?.error?.message || 'No se pudo cargar la información del estudiante o no existe.';
+          alert(errorMessage);
           navigate('/');
           return;
         }
         
-        const carrera = availableCarreras.find(c => c.nombre === data.carrera);
+        if (data && data.data) {
+            const studentData = data.data;
+            const carrera = availableCarreras.find(c => c.id === studentData.estudiante.carrera_id);
 
-        setStudentId(data.id);
-        setEstudiante({
-          cedula: data.cedula || '',
-          nombres_apellidos: data.nombres_apellidos || '',
-          direccion: data.direccion || '',
-          correo: data.correo || '',
-          carrera_id: data.carrera_id || '',
-          facultad_id: data.facultad_id || '',
-          fecha_nacimiento: data.fecha_nacimiento ? new Date(data.fecha_nacimiento).toISOString().split('T')[0] : '',
-        });
-        setSelectedSport(data.deportes?.[0] || ''); // Asume que un estudiante tiene un solo deporte
-        setSelectedCinta(data.cintas?.[0] || ''); // Asume que un estudiante tiene una sola cinta
-        if (data.ficha_medica) {
-          setFichaMedica({
-            tipo_sangre: data.ficha_medica.tipo_sangre || 'A+',
-            patologias: data.ficha_medica.patologias || '',
-            ultima_consulta_medica: data.ficha_medica.ultima_consulta_medica ? new Date(data.ficha_medica.ultima_consulta_medica).toISOString().split('T')[0] : '',
-          });
+            setStudentId(studentData.estudiante.id);
+            setEstudiante({
+              cedula: studentData.estudiante.cedula || '',
+              nombres_apellidos: studentData.estudiante.nombres_apellidos || '',
+              direccion: studentData.estudiante.direccion || '',
+              correo: studentData.estudiante.correo || '',
+              carrera_id: studentData.estudiante.carrera_id || '',
+              facultad_id: carrera?.facultad_id || '',
+              fecha_nacimiento: studentData.estudiante.fecha_nacimiento ? new Date(studentData.estudiante.fecha_nacimiento).toISOString().split('T')[0] : '',
+            });
+            setSelectedSport(studentData.deportes?.[0]?.deporte?.nombre || '');
+            setSelectedCinta(studentData.deportes?.[0]?.cinta_tipo?.color || '');
+            if (studentData.ficha_medica) {
+              setFichaMedica({
+                tipo_sangre: studentData.ficha_medica.tipo_sangre || 'A+',
+                patologias: studentData.ficha_medica.patologias || '',
+                ultima_consulta_medica: studentData.ficha_medica.ultima_consulta_medica ? new Date(studentData.ficha_medica.ultima_consulta_medica).toISOString().split('T')[0] : '',
+              });
+            }
+            setTestsFisicos(studentData.tests_fisicos || []);
+            setRecords(studentData.records_deportivos || []);
         }
-        setTestsFisicos(data.tests_fisicos || []);
-        setRecords(data.records_deportivos || []);
       };
       fetchStudentData();
     }
   }, [isEditMode, cedula, availableCarreras, navigate]);
 
 
-
   const handleEstudianteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    const finalValue = name === 'carrera_id' || name === 'facultad_id' ? (value === '' ? '' : Number(value)) : value;
+    let finalValue: string | number = value;
+    
+    if (name === 'carrera_id' || name === 'facultad_id') {
+      finalValue = value ? Number(value) : '';
+    }
+
     setEstudiante({ ...estudiante, [name]: finalValue });
   };
 

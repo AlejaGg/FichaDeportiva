@@ -1,7 +1,32 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient'; // Importar el cliente de Supabase
+import { Database } from '../types/database';
 import Input from '../components/Input'; // Asumiendo que existe un componente Input
+
+export type Estudiante = {
+  id: string;
+  cedula: string;
+  nombres_apellidos: string;
+  direccion: string;
+  correo: string;
+  fecha_nacimiento: string;
+  carrera_id: number | null;
+};
+
+export type FullStudentDetails = {
+  estudiante: Estudiante;
+  deportes: { deporte: { nombre: string }; cinta_tipo: { color: string } | null }[];
+  ficha_medica: Database['public']['Tables']['fichas_medicas']['Row'] | null;
+  tests_fisicos: Database['public']['Tables']['tests_fisicos']['Row'][];
+  records_deportivos: Database['public']['Tables']['records_deportivos']['Row'][];
+};
+
+// Definimos el tipo de la respuesta completa de la función RPC
+type RpcResponse = {
+  data: FullStudentDetails | null;
+  error: { message: string } | null;
+};
 
 const Home: React.FC = () => {
   const [cedula, setCedula] = useState('');
@@ -22,29 +47,27 @@ const Home: React.FC = () => {
 
     try {
       // Llamar a la función RPC para obtener los detalles completos del estudiante
-      const { data, error } = await supabase.rpc('get_student_full_details', { p_cedula: cedula });
+      const { data: rpcResult, error: clientError } = await supabase.rpc('get_student_full_details', {
+        p_cedula: cedula
+      });
       
-      // ¡AQUÍ ESTÁ EL CONSOLE.LOG QUE PEDISTE!
-      // Revisa la consola de tu navegador (F12) para ver qué devuelve Supabase.
-      console.log('Respuesta de Supabase:', data);
+      console.log('Respuesta de Supabase:', rpcResult);
 
-      // Si Supabase devuelve un error en la llamada RPC, lo lanzamos para que lo capture el bloque catch.
-      if (error) {
-        throw error;
+      if (clientError) {
+        throw clientError;
       }
 
-      // CORRECCIÓN: Tu función RPC devuelve un objeto. Si no encuentra nada, devuelve un objeto vacío {}.
-      // Verificamos si el objeto tiene la propiedad 'id' para confirmar que se encontró un estudiante.
-      if (data && data.id) {
-        // Si se encuentra el estudiante, navegar a la página de detalles
+      if (rpcResult && rpcResult.error) {
+        setError(rpcResult.error.message || 'Estudiante no encontrado.');
+      } else if (rpcResult && rpcResult.data) {
+        // Búsqueda exitosa
         navigate(`/students/${cedula}`);
       } else {
-        setError('No se encontró ningún estudiante con esa cédula.');
+        setError('No se encontró ningún estudiante con la cédula proporcionada.');
       }
     } catch (err: any) {
       console.error('Error al buscar estudiante:', err);
       // Mostramos un mensaje más amigable al usuario y guardamos el detalle en la consola.
-      // El error puede venir de la red o de la propia función de Supabase.
       setError(
         err.message.includes('permission denied') ? 'Error de permisos en la base de datos.' : 'No se pudo conectar con el servidor. Inténtalo de nuevo.'
       );
@@ -86,7 +109,7 @@ const Home: React.FC = () => {
 
       <div className="space-y-4 sm:space-x-4 flex flex-col sm:flex-row justify-center">
         <Link 
-          to="/students/new" 
+          to="/students/new"
           className="bg-blue-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-blue-700 transition duration-300 inline-block"
         >
           Registrar Nuevo Estudiante

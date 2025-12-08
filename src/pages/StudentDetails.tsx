@@ -5,8 +5,33 @@ import { Database } from '../types/database';
 import Button from '../components/Button';
 import './print.css'; // Import print-specific styles
 
-// Type for the full student data returned by the RPC function
-type FullStudentDetails = Database['public']['Functions']['get_student_full_details']['Returns'];
+// Tipos actualizados para coincidir con la nueva estructura de la función RPC
+export type Estudiante = {
+  id: string;
+  cedula: string;
+  nombres_apellidos: string;
+  direccion: string;
+  correo: string;
+  fecha_nacimiento: string;
+  facultad_id: number;
+  facultad_nombre: string;
+  carrera_id: number;
+  carrera_nombre: string;
+};
+
+export type FullStudentDetails = {
+  estudiante: Estudiante;
+  deporte: { id: number; nombre: string } | null;
+  cinta: { id: number; color: string } | null;
+  ficha_medica: Database['public']['Tables']['fichas_medicas']['Row'] | null;
+  tests_fisicos: (Database['public']['Tables']['tests_fisicos']['Row'] & { fecha_prueba: string })[];
+  records_deportivos: (Database['public']['Tables']['records_deportivos']['Row'])[];
+};
+
+type RpcResponse = {
+  data: FullStudentDetails | null;
+  error: { message: string } | null;
+};
 
 // Helper component for styled sections
 const DetailSection: React.FC<{ title: string; children: React.ReactNode; className?: string }> = ({ title, children, className }) => (
@@ -39,15 +64,20 @@ const StudentDetails: React.FC = () => {
       setError(null);
       setStudent(null);
       
-      const { data, error } = await supabase.rpc('get_student_full_details', { p_cedula: id });
+      const { data: rpcResponse, error: clientError } = await supabase.rpc('get_student_full_details', { 
+        p_cedula: id 
+      }) as { data: RpcResponse | null; error: any };
 
-      if (error) {
-        console.error('Error fetching details:', error);
-        setError(`Error al buscar al estudiante: ${error.message}`);
-      } else if (!data || Object.keys(data).length === 0) {
-        setError(`No se encontró ningún estudiante con la cédula: ${id}`);
+      if (clientError) {
+        console.error('Error fetching details:', clientError);
+        setError(`Error al buscar al estudiante: ${clientError.message}`);
+      } else if (rpcResponse && rpcResponse.error) {
+        setError(rpcResponse.error.message || `No se encontró ningún estudiante con la cédula: ${id}`);
+      } else if (rpcResponse && rpcResponse.data) {
+        // La búsqueda fue exitosa, los datos están en rpcResponse.data
+        setStudent(rpcResponse.data);
       } else {
-        setStudent(data);
+        setError(`No se encontró ningún estudiante con la cédula: ${id}`);
       }
       setLoading(false);
     };
@@ -61,6 +91,16 @@ const StudentDetails: React.FC = () => {
     window.print();
   };
 
+  // Función para calcular la edad
+  const calculateAge = (birthDate: string) => {
+    if (!birthDate) return null;
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const m = today.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) age--;
+    return age;
+  };
   return (
     <div className="printable-area">
       <Button onClick={() => navigate('/students')} className="no-print mb-6" variant="secondary">
@@ -78,25 +118,26 @@ const StudentDetails: React.FC = () => {
           </div>
           
           <DetailSection title="Datos Personales">
-            <DetailItem label="Cédula" value={student.cedula} />
-            <DetailItem label="Nombres y Apellidos" value={student.nombres_apellidos} />
-            <DetailItem label="Fecha de Nacimiento" value={student.fecha_nacimiento} />
-            <DetailItem label="Edad" value={`${student.edad} años`} />
-            <DetailItem label="Dirección" value={student.direccion} />
-            <DetailItem label="Correo" value={student.correo} />
-            <DetailItem label="Facultad" value={student.facultad} />
-            <DetailItem label="Carrera" value={student.carrera} />
+            <DetailItem label="Cédula" value={student.estudiante.cedula} />
+            <DetailItem label="Nombres y Apellidos" value={student.estudiante.nombres_apellidos} />
+            <DetailItem label="Fecha de Nacimiento" value={student.estudiante.fecha_nacimiento ? new Date(student.estudiante.fecha_nacimiento).toLocaleDateString('es-EC', { timeZone: 'UTC' }) : 'N/A'} />
+            <DetailItem label="Edad" value={`${calculateAge(student.estudiante.fecha_nacimiento)} años`} />
+            <DetailItem label="Dirección" value={student.estudiante.direccion} />
+            <DetailItem label="Correo" value={student.estudiante.correo} />
+            <DetailItem label="Facultad" value={student.estudiante.facultad_nombre} />
+            <DetailItem label="Carrera" value={student.estudiante.carrera_nombre} />
           </DetailSection>
 
           <DetailSection title="Información Deportiva">
-            <DetailItem label="Deportes" value={student.deportes?.join(', ')} />
+            <DetailItem label="Deporte" value={student.deporte?.nombre} />
+            <DetailItem label="Cinta" value={student.cinta?.color} />
           </DetailSection>
 
           {student.ficha_medica && (
             <DetailSection title="Ficha Médica">
                 <DetailItem label="Tipo de Sangre" value={student.ficha_medica.tipo_sangre} />
                 <DetailItem label="Patologías" value={student.ficha_medica.patologias} />
-                <DetailItem label="Última Consulta Médica" value={student.ficha_medica.ultima_consulta_medica} />
+                <DetailItem label="Última Consulta Médica" value={student.ficha_medica.ultima_consulta_medica ? new Date(student.ficha_medica.ultima_consulta_medica).toLocaleDateString('es-EC', { timeZone: 'UTC' }) : 'N/A'} />
             </DetailSection>
           )}
 
@@ -115,11 +156,11 @@ const StudentDetails: React.FC = () => {
                     <tbody>
                         {student.tests_fisicos.map(test => (
                             <tr key={test.id} className="border-b">
-                                <td className="p-3">{test.categoria}</td>
+                                <td className="p-3 capitalize">{test.categoria}</td>
                                 <td className="p-3">{test.prueba}</td>
                                 <td className="p-3">{test.resultado}</td>
                                 <td className="p-3">{test.unidad}</td>
-                                <td className="p-3">{new Date(test.fecha_prueba).toLocaleDateString()}</td>
+                                <td className="p-3">{new Date(test.fecha_prueba).toLocaleDateString('es-EC', { timeZone: 'UTC' })}</td>
                             </tr>
                         ))}
                     </tbody>
@@ -142,7 +183,7 @@ const StudentDetails: React.FC = () => {
                         {student.records_deportivos.map(record => (
                             <tr key={record.id} className="border-b">
                                 <td className="p-3">{record.nombre_competencia}</td>
-                                <td className="p-3">{record.fecha_competencia}</td>
+                                <td className="p-3">{record.fecha_competencia ? new Date(record.fecha_competencia).toLocaleDateString('es-EC', { timeZone: 'UTC' }) : 'N/A'}</td>
                                 <td className="p-3">{record.resultado}</td>
                                 <td className="p-3">{record.puesto}</td>
                             </tr>
