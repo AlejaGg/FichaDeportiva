@@ -283,20 +283,22 @@ const StudentForm: React.FC = () => {
 
       if (isEditMode) {
         // Lógica de actualización
-        const result = await supabase.rpc('update_full_student', {
-            p_student_id: studentId,
-            p_nombres_apellidos: estudiante.nombres_apellidos,
-            p_fecha_nacimiento: estudiante.fecha_nacimiento,
-            p_direccion: estudiante.direccion,
-            p_correo: estudiante.correo,
-            p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
-            p_deporte_nombre: selectedSport,
-            p_cinta_color: selectedCinta,
-            p_ficha_medica: fichaMedicaPayload,
-            p_tests_fisicos_a_agregar: testsFisicos.filter(t => !t.id), // Solo los nuevos
-            p_tests_fisicos_a_eliminar: testsToDelete,
-            p_records_a_agregar: records.filter(r => !r.id), // Solo los nuevos
-            p_records_a_eliminar: recordsToDelete,
+        const result = await supabase.rpc('update_full_student_details', {
+            p_update_data: {
+              student_id: studentId,
+              nombres_apellidos: estudiante.nombres_apellidos,
+              fecha_nacimiento: estudiante.fecha_nacimiento,
+              direccion: estudiante.direccion,
+              correo: estudiante.correo,
+              carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
+              deporte_nombre: selectedSport,
+              cinta_color: selectedCinta,
+              ficha_medica: fichaMedicaPayload,
+              tests_fisicos_a_agregar: testsFisicos.filter(t => !t.id),
+              records_a_agregar: records.filter(r => !r.id),
+              tests_fisicos_a_eliminar: testsToDelete,
+              records_a_eliminar: recordsToDelete
+            }
         });
         error = result.error;
       } else {
