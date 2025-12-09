@@ -4,15 +4,13 @@ import Home from './pages/Home';
 import StudentList from './pages/StudentList'; // Asumo que tienes esta página
 import StudentForm from './pages/StudentForm'; // Asumo que tienes el formulario de registro/edición
 import StudentDetail from './pages/StudentDetail'; // La página de detalles que creamos
+import { Toaster } from 'sonner';
 
 function App() {
   return (      <div className="min-h-screen bg-gray-100">
-        <nav className="bg-white shadow-md p-4 mb-8">
-          <Link to="/" className="text-xl font-bold text-blue-800 hover:text-blue-600">
-            Ficha Deportiva ESPOCH
-          </Link>
-        </nav>
-        <main className="container mx-auto px-4">
+        <Toaster richColors position="top-right" />
+
+        <main >
           <Routes>
             {/* Ruta principal */}
             <Route path="/" element={<Home />} />

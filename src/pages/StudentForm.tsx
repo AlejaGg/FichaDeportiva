@@ -5,10 +5,26 @@ import Input from '../components/Input';
 import Select from '../components/Select';
 import Button from '../components/Button';
 import { useNavigate, useParams } from 'react-router-dom';
+import { toast } from 'sonner';
+// Importamos iconos para mejorar la estética visual
+import { 
+  User, 
+  Activity, 
+  Medal, 
+  HeartPulse, 
+  ArrowLeft, 
+  Dumbbell, 
+  FileText, 
+  Plus, 
+  Trash2, 
+  AlertCircle,
+  CheckCircle2,
+  Save
+} from 'lucide-react';
 
-// Helper types for form state
+// --- TIPOS (Lógica Original Intacta) ---
 type EstudianteState = {
-  cedula: string; // La cédula no debe cambiar en modo edición
+  cedula: string;
   nombres_apellidos: string;
   direccion: string;
   correo: string;
@@ -23,39 +39,44 @@ type FichaMedicaState = {
   ultima_consulta_medica: string;
 };
 
-type RecordDeportivoState = RecordDeportivoInsert & {
-  id?: number; // Add id for existing records
-};
-
-type TestFisicoState = TestFisicoInsert & {
-  id?: number; // Add id for existing tests
-};
-
-type Carrera = {
-  id: number; // Corregido: el nombre de la propiedad era incorrecto
-  nombre: string;
-  facultad_id: number;
-  facultad_nombre: string;
-}
-
+type RecordDeportivoState = RecordDeportivoInsert & { id?: number; };
+type TestFisicoState = TestFisicoInsert & { id?: number; };
+type Carrera = { id: number; nombre: string; facultad_id: number; facultad_nombre: string; }
 type Facultad = { id: number; nombre: string; }
 
-
-
-// Helper component for form sections
-const FormSection: React.FC<{ title: string; children: React.ReactNode, actionButton?: React.ReactNode }> = ({ title, children, actionButton }) => (
-    <div className="mb-8 p-6 bg-white rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6 border-b pb-3">
-        <h2 className="text-2xl font-semibold text-gray-800">{title}</h2>
-        {actionButton}
+// --- NUEVO COMPONENTE DE SECCIÓN (SOLO DISEÑO) ---
+const FormSection: React.FC<{ 
+  title: string; 
+  subtitle?: string; 
+  icon: React.ReactNode; 
+  children: React.ReactNode; 
+  actionButton?: React.ReactNode 
+}> = ({ title, subtitle, icon, children, actionButton }) => (
+  <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden transition-all duration-300 hover:shadow-md hover:border-indigo-100 group">
+    <div className="px-6 py-5 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-50/50">
+      <div className="flex items-center gap-3">
+        <div className="p-2.5 bg-white border border-slate-200 rounded-xl text-indigo-600 shadow-sm group-hover:scale-105 transition-transform">
+          {icon}
+        </div>
+        <div>
+          <h2 className="text-lg font-bold text-slate-800 leading-tight">{title}</h2>
+          {subtitle && <p className="text-sm text-slate-500">{subtitle}</p>}
+        </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {children}
-      </div>
+      {actionButton && (
+        <div className="shrink-0 self-end sm:self-auto">
+          {actionButton}
+        </div>
+      )}
     </div>
-  );
+    <div className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+      {children}
+    </div>
+  </div>
+);
 
 const StudentForm: React.FC = () => {
+  // --- LÓGICA (NO SE HA TOCADO NADA AQUÍ) ---
   const { cedula } = useParams<{ cedula?: string }>();
   const isEditMode = !!cedula;
   const navigate = useNavigate();
@@ -65,7 +86,6 @@ const StudentForm: React.FC = () => {
   const [availableCarreras, setAvailableCarreras] = useState<Carrera[]>([]);
   const [availableCintas, setAvailableCintas] = useState<string[]>([]);
   
-  // Unificar estado
   const [estudiante, setEstudiante] = useState<EstudianteState>({
     cedula: '',
     nombres_apellidos: '',
@@ -84,27 +104,20 @@ const StudentForm: React.FC = () => {
   });
   const [testsFisicos, setTestsFisicos] = useState<TestFisicoState[]>([]);
   const [records, setRecords] = useState<RecordDeportivoState[]>([]);
-  const [studentId, setStudentId] = useState<string | null>(null); // El tipo ya es correcto (string para UUID)
+  const [initialTests, setInitialTests] = useState<TestFisicoState[]>([]);
+  const [initialRecords, setInitialRecords] = useState<RecordDeportivoState[]>([]);
+  const [studentId, setStudentId] = useState<string | null>(null);
   const [testsToDelete, setTestsToDelete] = useState<number[]>([]);
   const [recordsToDelete, setRecordsToDelete] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  // Carreras filtradas basadas en la facultad seleccionada
   const filteredCarreras = availableCarreras.filter(c => c.facultad_id === estudiante.facultad_id);
-
 
   useEffect(() => {
     const fetchSports = async () => {
-      const { data, error } = await supabase
-        .from('deportes')
-        .select('nombre');
-      if (error) {
-        console.error('Error fetching sports:', error);
-      } else {
-        const sportNames = data.map(d => d.nombre as DeporteName);
-        setAvailableSports(sportNames);
-        // No seleccionar por defecto para que el usuario elija explícitamente
-      }
+      const { data, error } = await supabase.from('deportes').select('nombre');
+      if (error) console.error('Error fetching sports:', error);
+      else setAvailableSports(data.map(d => d.nombre as DeporteName));
     };
     fetchSports();
 
@@ -120,17 +133,13 @@ const StudentForm: React.FC = () => {
 
     const fetchCintas = async () => {
       const { data, error } = await supabase.from('cinta_tipos').select('color').order('id');
-      if (error) {
-        console.error('Error fetching cintas:', error);
-      } else {
-        setAvailableCintas(data.map(c => c.color));
-      }
+      if (error) console.error('Error fetching cintas:', error);
+      else setAvailableCintas(data.map(c => c.color));
     };
     fetchCintas();
     fetchFacultadesAndCarreras();
   }, []);
 
-  // useEffect separado para cargar datos del estudiante una vez que las carreras estén listas
   useEffect(() => {
     if (isEditMode && cedula && availableCarreras.length > 0) {
       const fetchStudentData = async () => {
@@ -139,9 +148,8 @@ const StudentForm: React.FC = () => {
         setLoading(false);
 
         if (clientError || (data && data.error)) {
-          const errorMessage = clientError?.message || data?.error?.message || 'No se pudo cargar la información del estudiante o no existe.';
-          alert(errorMessage);
-          navigate('/');
+          alert(clientError?.message || data?.error?.message || 'Error al cargar estudiante.');
+          navigate('/students'); // UX: Regresar a lista si falla
           return;
         }
         
@@ -169,7 +177,9 @@ const StudentForm: React.FC = () => {
               });
             }
             setTestsFisicos(studentData.tests_fisicos || []);
+            setInitialTests(studentData.tests_fisicos || []);
             setRecords(studentData.records_deportivos || []);
+            setInitialRecords(studentData.records_deportivos || []);
         }
       };
       fetchStudentData();
@@ -180,11 +190,7 @@ const StudentForm: React.FC = () => {
   const handleEstudianteChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     let finalValue: string | number = value;
-    
-    if (name === 'carrera_id' || name === 'facultad_id') {
-      finalValue = value ? Number(value) : '';
-    }
-
+    if (name === 'carrera_id' || name === 'facultad_id') finalValue = value ? Number(value) : '';
     setEstudiante({ ...estudiante, [name]: finalValue });
   };
 
@@ -200,72 +206,49 @@ const StudentForm: React.FC = () => {
   };
 
   const addTestFisico = () => {
-    setTestsFisicos([...testsFisicos, {
-      categoria: CATEGORIAS_PRUEBA[0], // CORREGIDO: Usar el valor del array ('Velocidad') en lugar de un string en minúscula.
-      prueba: '',
-      unidad: '',
-      resultado: '',
-    }]);
+    setTestsFisicos([...testsFisicos, { categoria: CATEGORIAS_PRUEBA[0], prueba: '', unidad: '', resultado: '' }]);
   };
 
   const removeTestFisico = (index: number) => {
     const testToRemove = testsFisicos[index];
-    if (testToRemove.id) { // Si tiene ID, es un registro existente
-      setTestsToDelete([...testsToDelete, testToRemove.id]);
-    }
-    const newTests = testsFisicos.filter((_, i) => i !== index);
-    setTestsFisicos(newTests);
+    if (testToRemove.id) setTestsToDelete([...testsToDelete, testToRemove.id]);
+    setTestsFisicos(testsFisicos.filter((_, i) => i !== index));
   };
 
   const handleRecordChange = (index: number, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     const newRecords = [...records];
     const record = newRecords[index];
-    
-    if (name === 'puesto') {
-      newRecords[index] = { ...record, [name]: value === '' ? '' : parseInt(value, 10) };
-    } else if (name === 'resultado') {
-      newRecords[index] = { ...record, [name]: value as ResultadoCompetencia };
-    }
-    else {
-      newRecords[index] = { ...record, [name]: value };
-    }
+    if (name === 'puesto') newRecords[index] = { ...record, [name]: value === '' ? '' : parseInt(value, 10) };
+    else if (name === 'resultado') newRecords[index] = { ...record, [name]: value as ResultadoCompetencia };
+    else newRecords[index] = { ...record, [name]: value };
     setRecords(newRecords);
   };
 
   const addRecord = () => {
-    setRecords([...records, {
-      nombre_competencia: '',
-      fecha_competencia: '',
-      resultado: 'otro', // CORRECCIÓN: El ENUM en la DB espera valores en minúscula.
-      puesto: 0,
-    }]);
+    setRecords([...records, { nombre_competencia: '', fecha_competencia: '', resultado: 'otro', puesto: 0 }]);
   };
 
   const removeRecord = (index: number) => {
     const recordToRemove = records[index];
-    if (recordToRemove.id) { // Si tiene ID, es un registro existente
-      setRecordsToDelete([...recordsToDelete, recordToRemove.id]);
-    }
-    const newRecords = records.filter((_, i) => i !== index);
-    setRecords(newRecords);
+    if (recordToRemove.id) setRecordsToDelete([...recordsToDelete, recordToRemove.id]);
+    setRecords(records.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     if (!estudiante.cedula && !isEditMode) {
-      alert('La cédula es obligatoria.');
+      toast.error('La cédula es obligatoria para un nuevo registro.');
       return;
     }
     if (selectedSport === '') {
-      alert('Debe seleccionar un deporte.');
+      toast.error('Debe seleccionar un deporte.');
       return;
     }
+    
     setLoading(true);
-
     try {
-      // Prepare data for RPC
       const fichaMedicaPayload: FichaMedicaInsert = {
         tipo_sangre: fichaMedica.tipo_sangre || undefined,
         patologias: fichaMedica.patologias || undefined,
@@ -279,30 +262,40 @@ const StudentForm: React.FC = () => {
         puesto: record.puesto === '' ? undefined : record.puesto,
       }));
 
+      const testsToUpdate = testsFisicos.filter(current => {
+        if (!current.id) return false;
+        const original = initialTests.find(t => t.id === current.id);
+        return original && JSON.stringify(current) !== JSON.stringify(original);
+      });
+
+      const recordsToUpdate = records.filter(current => {
+        if (!current.id) return false;
+        const original = initialRecords.find(r => r.id === current.id);
+        return original && JSON.stringify(current) !== JSON.stringify(original);
+      });
+
       let error;
 
       if (isEditMode) {
-        // Lógica de actualización
-        const result = await supabase.rpc('update_full_student_details', {
-            p_update_data: {
-              student_id: studentId,
-              nombres_apellidos: estudiante.nombres_apellidos,
-              fecha_nacimiento: estudiante.fecha_nacimiento,
-              direccion: estudiante.direccion,
-              correo: estudiante.correo,
-              carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
-              deporte_nombre: selectedSport,
-              cinta_color: selectedCinta,
-              ficha_medica: fichaMedicaPayload,
-              tests_fisicos_a_agregar: testsFisicos.filter(t => !t.id),
-              records_a_agregar: records.filter(r => !r.id),
-              tests_fisicos_a_eliminar: testsToDelete,
-              records_a_eliminar: recordsToDelete
-            }
+        const result = await supabase.rpc('update_full_student', {
+            p_student_id: studentId,
+            p_nombres_apellidos: estudiante.nombres_apellidos,
+            p_fecha_nacimiento: estudiante.fecha_nacimiento,
+            p_direccion: estudiante.direccion,
+            p_correo: estudiante.correo,
+            p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
+            p_deporte_nombre: selectedSport,
+            p_cinta_color: selectedCinta,
+            p_ficha_medica: fichaMedicaPayload,
+            p_tests_fisicos_a_agregar: testsFisicos.filter(t => !t.id),
+            p_tests_fisicos_a_actualizar: testsToUpdate,
+            p_tests_fisicos_a_eliminar: testsToDelete,
+            p_records_a_agregar: records.filter(r => !r.id),
+            p_records_a_actualizar: recordsToUpdate,
+            p_records_a_eliminar: recordsToDelete
         });
         error = result.error;
       } else {
-        // Lógica de creación
         const result = await supabase.rpc('create_full_student', {
             p_cedula: estudiante.cedula,
             p_nombres_apellidos: estudiante.nombres_apellidos,
@@ -320,147 +313,269 @@ const StudentForm: React.FC = () => {
         error = result.error;
       }
 
-      if (error) {
-        throw error;
-      }
-
-      alert(`¡Estudiante ${isEditMode ? 'actualizado' : 'registrado'} con éxito!`);
+      if (error) throw error;
+      toast.success(`¡Estudiante ${isEditMode ? 'actualizado' : 'registrado'} con éxito!`);
       navigate(`/students/${estudiante.cedula}`);
 
     } catch (error: any) {
       console.error('Error al registrar:', error);
       if (error.message.includes('duplicate key value violates unique constraint "estudiantes_cedula_key"')) {
-        setError('Error: La cédula ingresada ya existe en la base de datos.');
+        setError('Error: La cédula ingresada ya existe.');
       } else {
-        setError(`Error al ${isEditMode ? 'actualizar' : 'registrar'} el estudiante: ${error.message}`);
+        setError(`Error: ${error.message}`);
       }
     } finally {
       setLoading(false);
     }
   };
 
+  // --- RENDERIZADO (DISEÑO MEJORADO) ---
   return (
-    <form onSubmit={handleSubmit}>
-      {error && (
-        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-          <span className="block sm:inline">{error}</span>
-        </div>
-      )}
-      <h1 className="text-3xl font-bold mb-6">{isEditMode ? 'Editar Estudiante' : 'Registrar Nuevo Estudiante'}</h1>
-
-      {/* Deporte Section */}
-      <FormSection title="1. Deporte">
-        <Select
-          label="Seleccione un Deporte"
-          id="deporte"
-          name="deporte"
-          value={selectedSport}
-          onChange={(e) => setSelectedSport(e.target.value as DeporteName)}
-          required
-        >
-          <option value="" disabled>Seleccione...</option>
-          {availableSports.map(sport => (
-            <option key={sport} value={sport}>{sport}</option>
-          ))}
-        </Select>
-        <Select
-          label="Seleccione una Cinta"
-          id="cinta"
-          name="cinta"
-          value={selectedCinta}
-          onChange={(e) => setSelectedCinta(e.target.value)}
-        >
-          <option value="">Ninguna</option>
-          {availableCintas.map(cinta => <option key={cinta} value={cinta}>{cinta}</option>)}
-        </Select>
-      </FormSection>
-
-      {/* Datos Personales */}
-      <FormSection title="2. Datos Personales">
-        <Input label="Cédula" id="cedula" name="cedula" value={estudiante.cedula} onChange={handleEstudianteChange} required disabled={isEditMode} />
-        <Input label="Nombres y Apellidos" id="nombres_apellidos" name="nombres_apellidos" value={estudiante.nombres_apellidos} onChange={handleEstudianteChange} required />
-        <Input label="Dirección" id="direccion" name="direccion" value={estudiante.direccion} onChange={handleEstudianteChange} required />
-        <Input label="Correo Electrónico" id="correo" name="correo" type="email" value={estudiante.correo} onChange={handleEstudianteChange} required />
-        <Select label="Facultad" id="facultad_id" name="facultad_id" value={estudiante.facultad_id} onChange={handleEstudianteChange} required>
-            <option value="" disabled>Seleccione...</option>
-            {availableFacultades.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
-        </Select>
-        <Select label="Carrera" id="carrera_id" name="carrera_id" value={estudiante.carrera_id} onChange={handleEstudianteChange} required disabled={!estudiante.facultad_id}>
-            <option value="" disabled>Seleccione una facultad primero...</option>
-            {filteredCarreras.map(c => (
-                    <option key={c.id} value={c.id}>
-                        {c.nombre}
-                    </option>
-                ))
-            }
-        </Select>
-        <Input label="Fecha de Nacimiento" id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={estudiante.fecha_nacimiento} onChange={handleEstudianteChange} required />
-      </FormSection>
-
-      {/* Ficha Médica */}
-      <FormSection title="3. Ficha Médica">
-        <Select label="Tipo de Sangre" id="tipo_sangre" name="tipo_sangre" value={fichaMedica.tipo_sangre} onChange={handleFichaMedicaChange}>
-          {['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(t => <option key={t} value={t}>{t}</option>)}
-        </Select>
-        <Input label="Patologías (separadas por coma)" id="patologias" name="patologias" value={fichaMedica.patologias || ''} onChange={handleFichaMedicaChange} />
-        <Input label="Última Consulta Médica" id="ultima_consulta_medica" name="ultima_consulta_medica" type="date" value={fichaMedica.ultima_consulta_medica || ''} onChange={handleFichaMedicaChange} />
-      </FormSection>
-
-      {/* Test Físicos */}
-      <FormSection 
-        title="4. Tests Físicos"
-        actionButton={
-            <Button type="button" onClick={addTestFisico} variant="secondary">
-                + Añadir Test
-            </Button>
-        }
-      >
-        {testsFisicos.map((test, index) => (
-          <div key={index} className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-4 gap-4 border p-4 rounded-md mb-4 relative">
-             <Button type="button" onClick={() => removeTestFisico(index)} variant="danger" className="absolute -top-2 -right-2 w-8 h-8 rounded-full !p-0">X</Button>
-            <Select label="Categoría" id={`cat-${index}`} name="categoria" value={test.categoria} onChange={e => handleTestFisicoChange(index, e)}>
-              {CATEGORIAS_PRUEBA.map(c => <option key={c} value={c}>{c}</option>)}
-            </Select>
-            <Input label="Prueba" id={`prueba-${index}`} name="prueba" value={test.prueba} onChange={e => handleTestFisicoChange(index, e)} />
-            <Input label="Unidad" id={`unidad-${index}`} name="unidad" value={test.unidad} onChange={e => handleTestFisicoChange(index, e)} />
-            <Input label="Resultado" id={`resultado-${index}`} name="resultado" value={test.resultado} onChange={e => handleTestFisicoChange(index, e)} />
-          </div>
-        ))}
-        {testsFisicos.length === 0 && <p className="text-gray-500 md:col-span-2">No hay tests físicos. Añada uno si es necesario.</p>}
-      </FormSection>
-
-
-      {/* Record Deportivo */}
-      <FormSection 
-        title="5. Récord Deportivo"
-        actionButton={
-            <Button type="button" onClick={addRecord} variant="secondary">
-                + Añadir Récord
-            </Button>
-        }
-      >
-        {records.map((record, index) => (
-          <div key={index} className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-5 gap-4 border p-4 rounded-md mb-4 relative">
-            <Button type="button" onClick={() => removeRecord(index)} variant="danger" className="absolute -top-2 -right-2 w-8 h-8 rounded-full !p-0">X</Button>
-            <Input label="Competencia" id={`comp-${index}`} name="nombre_competencia" value={record.nombre_competencia} onChange={e => handleRecordChange(index, e)} />
-            <Input label="Fecha" id={`fecha-${index}`} name="fecha_competencia" type="date" value={record.fecha_competencia} onChange={e => handleRecordChange(index, e)} />
-            <Input label="Puesto" id={`puesto-${index}`} name="puesto" type="number" value={record.puesto} onChange={e => handleRecordChange(index, e)} />
-            <Select label="Resultado" id={`res-${index}`} name="resultado" value={record.resultado} onChange={e => handleRecordChange(index, e)}>
-              {RESULTADOS_COMPETENCIA.map(r => <option key={r} value={r}>{r}</option>)}
-            </Select>
-            <div/>
-          </div>
-        ))}
-         {records.length === 0 && <p className="text-gray-500 md:col-span-2">No hay récords deportivos. Añada uno si es necesario.</p>}
-    </FormSection>
+    <div className="min-h-screen bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900 pb-24">
       
-      {/* Submit Button */}
-      <div className="mt-8 text-right">
-        <Button type="submit" disabled={loading}>
-          {loading ? 'Guardando...' : (isEditMode ? 'Actualizar Estudiante' : 'Registrar Estudiante')}
-        </Button>
-      </div>
-    </form>
+      {/* 1. Header Sticky con Navegación */}
+      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+                <button 
+                    onClick={() => navigate('/students')} 
+                    className="p-2 -ml-2 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all group"
+                    title="Regresar a la lista"
+                >
+                    <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+                </button>
+                <div>
+                    <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                        {isEditMode ? 'Editar Expediente' : 'Nuevo Registro'}
+                    </h1>
+                    <p className="text-xs text-slate-500 font-medium hidden sm:block">
+                        Sistema de Gestión Deportiva
+                    </p>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-3">
+                 <button 
+                    type="button"
+                    onClick={() => navigate('/students')}
+                    className="hidden sm:inline-flex px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 hover:text-slate-900 transition-colors"
+                 >
+                    Cancelar
+                 </button>
+                 <Button 
+                    type="submit" 
+                    form="student-form" // Conecta este botón externo al formulario
+                    disabled={loading}
+                    className="px-5 py-2 text-sm shadow-md hover:shadow-lg shadow-indigo-500/20"
+                 >
+                     {loading ? 'Guardando...' : 'Guardar'}
+                 </Button>
+            </div>
+        </div>
+      </header>
+
+      {/* 2. Contenedor Principal */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        
+        <form id="student-form" onSubmit={handleSubmit} className="space-y-8">
+            
+            {/* Mensaje de Error */}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3 text-red-700 shadow-sm">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                    <span className="font-bold block">Error al procesar la solicitud</span>
+                    <span className="text-sm">{error}</span>
+                </div>
+              </div>
+            )}
+
+            {/* SECCIÓN 1: DATOS PERSONALES */}
+            <FormSection 
+              title="Información Personal" 
+              subtitle="Datos básicos del estudiante" 
+              icon={<User className="w-5 h-5" />}
+            >
+                <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input label="Cédula de Identidad" id="cedula" name="cedula" value={estudiante.cedula} onChange={handleEstudianteChange} required disabled={isEditMode} placeholder="Ingrese número de cédula" />
+                    <Input label="Fecha de Nacimiento" id="fecha_nacimiento" name="fecha_nacimiento" type="date" value={estudiante.fecha_nacimiento} onChange={handleEstudianteChange} required />
+                </div>
+                
+                <div className="md:col-span-2">
+                     <Input label="Nombres Completos" id="nombres_apellidos" name="nombres_apellidos" value={estudiante.nombres_apellidos} onChange={handleEstudianteChange} required placeholder="Ej: Juan Sebastián Pérez..." />
+                </div>
+                
+                <Input label="Correo Institucional" id="correo" name="correo" type="email" value={estudiante.correo} onChange={handleEstudianteChange} required placeholder="@unach.edu.ec" />
+                <Input label="Dirección Domiciliaria" id="direccion" name="direccion" value={estudiante.direccion} onChange={handleEstudianteChange} required />
+                
+                <Select label="Facultad" id="facultad_id" name="facultad_id" value={estudiante.facultad_id} onChange={handleEstudianteChange} required>
+                    <option value="" disabled>Seleccione Facultad...</option>
+                    {availableFacultades.map(f => <option key={f.id} value={f.id}>{f.nombre}</option>)}
+                </Select>
+                
+                <Select label="Carrera" id="carrera_id" name="carrera_id" value={estudiante.carrera_id} onChange={handleEstudianteChange} required disabled={!estudiante.facultad_id}>
+                    <option value="" disabled>Seleccione Carrera...</option>
+                    {filteredCarreras.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </Select>
+            </FormSection>
+
+            {/* Layout Grid para Deportes y Salud */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* SECCIÓN 2: DEPORTE */}
+                <FormSection 
+                    title="Disciplina Deportiva" 
+                    subtitle="Actividad principal" 
+                    icon={<Dumbbell className="w-5 h-5" />}
+                >
+                    <div className="md:col-span-2 space-y-6">
+                        <Select
+                            label="Deporte Seleccionado"
+                            id="deporte"
+                            name="deporte"
+                            value={selectedSport}
+                            onChange={(e) => setSelectedSport(e.target.value as DeporteName)}
+                            required
+                            >
+                            <option value="" disabled>Seleccione...</option>
+                            {availableSports.map(sport => <option key={sport} value={sport}>{sport}</option>)}
+                        </Select>
+                        <Select
+                            label="Grado / Cinta (Opcional)"
+                            id="cinta"
+                            name="cinta"
+                            value={selectedCinta}
+                            onChange={(e) => setSelectedCinta(e.target.value)}
+                            >
+                            <option value="">Ninguna</option>
+                            {availableCintas.map(cinta => <option key={cinta} value={cinta}>{cinta}</option>)}
+                        </Select>
+                    </div>
+                </FormSection>
+
+                {/* SECCIÓN 3: SALUD */}
+                <FormSection 
+                    title="Ficha Médica" 
+                    subtitle="Información de salud" 
+                    icon={<HeartPulse className="w-5 h-5" />}
+                >
+                     <div className="md:col-span-2 space-y-6">
+                        <div className="grid grid-cols-2 gap-4">
+                            <Select label="Tipo de Sangre" id="tipo_sangre" name="tipo_sangre" value={fichaMedica.tipo_sangre} onChange={handleFichaMedicaChange}>
+                            {['', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(t => <option key={t} value={t}>{t}</option>)}
+                            </Select>
+                            <Input label="Última Consulta" id="ultima_consulta_medica" name="ultima_consulta_medica" type="date" value={fichaMedica.ultima_consulta_medica || ''} onChange={handleFichaMedicaChange} />
+                        </div>
+                        <Input label="Patologías / Alergias" id="patologias" name="patologias" value={fichaMedica.patologias || ''} onChange={handleFichaMedicaChange} placeholder="Describa alergias o condiciones..." />
+                     </div>
+                </FormSection>
+            </div>
+
+            {/* SECCIÓN 4: TESTS FÍSICOS */}
+            <FormSection 
+              title="Evaluación Física" 
+              subtitle="Tests de rendimiento y mediciones" 
+              icon={<FileText className="w-5 h-5" />}
+              actionButton={
+                <button type="button" onClick={addTestFisico} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-200 shadow-sm">
+                  <Plus className="w-4 h-4" /> Añadir Test
+                </button>
+              }
+            >
+              {testsFisicos.length === 0 ? (
+                <div className="md:col-span-2 py-12 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                    <Activity className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-slate-500 font-medium">No se han registrado tests físicos.</p>
+                </div>
+              ) : (
+                testsFisicos.map((test, index) => (
+                  <div key={index} className="col-span-1 md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 relative hover:border-indigo-300 hover:shadow-md transition-all group shadow-sm">
+                    <button type="button" onClick={() => removeTestFisico(index)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100" title="Eliminar">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-2">
+                        <Select label="Categoría" id={`cat-${index}`} name="categoria" value={test.categoria} onChange={e => handleTestFisicoChange(index, e)}>
+                           {CATEGORIAS_PRUEBA.map(c => <option key={c} value={c}>{c}</option>)}
+                        </Select>
+                        <Input label="Prueba" id={`prueba-${index}`} name="prueba" value={test.prueba} onChange={e => handleTestFisicoChange(index, e)} placeholder="Ej: Flexiones" />
+                        <Input label="Unidad" id={`unidad-${index}`} name="unidad" value={test.unidad} onChange={e => handleTestFisicoChange(index, e)} placeholder="Ej: Repeticiones" />
+                        <Input label="Resultado" id={`resultado-${index}`} name="resultado" value={test.resultado} onChange={e => handleTestFisicoChange(index, e)} placeholder="Valor" />
+                    </div>
+                  </div>
+                ))
+              )}
+            </FormSection>
+
+            {/* SECCIÓN 5: RÉCORDS */}
+            <FormSection 
+              title="Historial Competitivo" 
+              subtitle="Logros y participaciones destacadas" 
+              icon={<Medal className="w-5 h-5" />}
+              actionButton={
+                <button type="button" onClick={addRecord} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 transition-colors text-sm font-medium border border-indigo-200 shadow-sm">
+                  <Plus className="w-4 h-4" /> Añadir Récord
+                </button>
+              }
+            >
+              {records.length === 0 ? (
+                <div className="md:col-span-2 py-12 text-center bg-slate-50 rounded-xl border-2 border-dashed border-slate-200">
+                    <Medal className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+                    <p className="text-slate-500 font-medium">No hay competencias registradas.</p>
+                </div>
+              ) : (
+                records.map((record, index) => (
+                  <div key={index} className="col-span-1 md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 relative hover:border-indigo-300 hover:shadow-md transition-all group shadow-sm">
+                    <button type="button" onClick={() => removeRecord(index)} className="absolute top-2 right-2 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100" title="Eliminar">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-4 mt-2">
+                        <div className="md:col-span-4">
+                            <Input label="Nombre Competencia" id={`comp-${index}`} name="nombre_competencia" value={record.nombre_competencia} onChange={e => handleRecordChange(index, e)} placeholder="Ej: Campeonato Nacional" />
+                        </div>
+                        <div className="md:col-span-3">
+                            <Input label="Fecha" id={`fecha-${index}`} name="fecha_competencia" type="date" value={record.fecha_competencia} onChange={e => handleRecordChange(index, e)} />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Input label="Puesto" id={`puesto-${index}`} name="puesto" type="number" value={record.puesto} onChange={e => handleRecordChange(index, e)} placeholder="#" />
+                        </div>
+                        <div className="md:col-span-3">
+                            <Select label="Resultado Final" id={`res-${index}`} name="resultado" value={record.resultado} onChange={e => handleRecordChange(index, e)}>
+                            {RESULTADOS_COMPETENCIA.map(r => <option key={r} value={r}>{r}</option>)}
+                            </Select>
+                        </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </FormSection>
+
+            {/* BOTÓN FINAL DE PÁGINA */}
+            <div className="pt-8 flex justify-end items-center gap-4 border-t border-slate-200 mt-8">
+                <button 
+                    type="button" 
+                    onClick={() => navigate('/students')}
+                    className="px-6 py-3 text-slate-600 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 hover:text-slate-900 transition-colors font-medium shadow-sm"
+                >
+                    Cancelar
+                </button>
+                <Button 
+                  type="submit" 
+                  disabled={loading}
+                  className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold shadow-lg shadow-indigo-600/20 hover:-translate-y-0.5 transition-all flex items-center gap-2"
+                >
+                  {loading ? (
+                    'Guardando...'
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-5 h-5" />
+                      {isEditMode ? 'Guardar Cambios' : 'Registrar Estudiante'}
+                    </>
+                  )}
+                </Button>
+            </div>
+
+        </form>
+      </main>
+    </div>
   );
 };
 

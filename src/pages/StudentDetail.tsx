@@ -1,11 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
+import { 
+  Printer, Edit3, ArrowLeft, User, FileText, 
+  Activity, Trophy, HeartPulse, Building2 
+} from 'lucide-react';
 
+// === INTERFACES (Lógica Intacta) ===
 interface FichaMedica {
   tipo_sangre: string;
   patologias: string | null;
-  ultima_consulta_medica: string | null; // 'YYYY-MM-DD'
+  ultima_consulta_medica: string | null;
 }
 
 interface TestFisico {
@@ -14,21 +19,20 @@ interface TestFisico {
   prueba: string;
   unidad: string;
   resultado: string;
-  created_at: string; // timestamp
-  fecha_prueba: string; // 'YYYY-MM-DD'
+  created_at: string;
+  fecha_prueba: string;
 }
 
 interface RecordDeportivo {
   id: number;
   nombre_competencia: string;
-  fecha_competencia: string; // 'YYYY-MM-DD'
+  fecha_competencia: string;
   resultado: string;
   puesto: number;
 }
 
-// === Tipos que reflejan lo que devuelve la función PL/pgSQL ===
 interface RawEstudiante {
-  id: string; // uuid
+  id: string;
   cedula: string;
   nombres_apellidos: string;
   fecha_nacimiento: string;
@@ -50,13 +54,11 @@ interface RawFacultad {
 }
 
 interface RawDeporteItem {
-  estudiante_deporte: any; // si luego quieres, lo tipamos mejor
+  estudiante_deporte: any;
   deporte: { id: number; nombre: string };
-  // OJO: ahora la función devuelve { id, color }, no { id, nombre }
   cinta_tipo: { id: number; color: string } | null;
 }
 
-// Nuevo: tipo para el campo aplanado 'cintas'
 interface RawCintaItem {
   deporte_id: number;
   deporte_nombre: string;
@@ -72,7 +74,7 @@ interface GetStudentFullDetailsData {
   records_deportivos: RecordDeportivo[];
   carrera: RawCarrera | null;
   facultad: RawFacultad | null;
-  cintas: RawCintaItem[]; // <- NUEVO: viene del campo 'cintas' de tu función
+  cintas: RawCintaItem[];
 }
 
 interface GetStudentFullDetailsResponse {
@@ -80,7 +82,6 @@ interface GetStudentFullDetailsResponse {
   error: { message: string; detail?: string } | null;
 }
 
-// === Tipo que usará tu UI (ya “planchado”) ===
 interface StudentDetails {
   id: string;
   cedula: string;
@@ -94,66 +95,30 @@ interface StudentDetails {
   ficha_medica: FichaMedica | null;
   tests_fisicos: TestFisico[];
   deportes: string[];
-  cintas: string[] | null; // aquí guardamos solo los colores o "Deporte - Color"
+  cintas: string[] | null;
   records_deportivos: RecordDeportivo[];
 }
 
-// Componente reutilizable para mostrar un campo de datos
-const DetailItem: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
-  <div className="flex flex-col sm:flex-row py-2 border-b border-gray-200">
-    <strong className="font-semibold w-full sm:w-1/3">{label}:</strong>
-    <span className="w-full sm:w-2/3">
-      {value ?? <span className="text-gray-400">No disponible</span>}
-    </span>
-  </div>
-);
-
-// Componente para secciones
-const DetailSection: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="mb-6">
-    <h2 className="text-xl font-bold text-gray-700 mb-3 bg-gray-100 p-2 rounded-md">
-      {title}
-    </h2>
-    {children}
-  </div>
-);
-
-// Helper para calcular edad a partir de la fecha
+// === HELPER FUNCTIONS (Lógica Intacta) ===
 const calcularEdad = (fechaNacimiento: string): number => {
   const hoy = new Date();
   const nacimiento = new Date(fechaNacimiento);
   let edad = hoy.getFullYear() - nacimiento.getFullYear();
   const mes = hoy.getMonth() - nacimiento.getMonth();
-
   if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
     edad--;
   }
-
   return edad;
 };
 
-// Mapea lo que devuelve la función PL/pgSQL a StudentDetails
 const mapToStudentDetails = (payload: GetStudentFullDetailsData): StudentDetails => {
   const {
-    estudiante,
-    deportes,
-    ficha_medica,
-    tests_fisicos,
-    records_deportivos,
-    carrera,
-    facultad,
-    cintas,
+    estudiante, deportes, ficha_medica, tests_fisicos, records_deportivos, carrera, facultad, cintas,
   } = payload;
 
   const deportesNombres = deportes?.map(d => d.deporte.nombre) ?? [];
-
-  // Usamos el campo 'cintas' aplanado para obtener colores por deporte
-  // Ejemplo de salida: ["Taekwondo - Cinta amarilla", "Judo - Cinta verde"]
-  const cintasNombres =
-    cintas && cintas.length > 0
-      ? cintas
-          .filter(c => c.cinta_color) // solo con color
-          .map(c => `${c.deporte_nombre} - ${c.cinta_color}`)
+  const cintasNombres = cintas && cintas.length > 0
+      ? cintas.filter(c => c.cinta_color).map(c => `${c.deporte_nombre} - ${c.cinta_color}`)
       : null;
 
   return {
@@ -174,6 +139,31 @@ const mapToStudentDetails = (payload: GetStudentFullDetailsData): StudentDetails
   };
 };
 
+// === COMPONENTES DE DISEÑO ===
+
+// Campo de Dato Individual (Optimizada para Grid)
+const DataField: React.FC<{ label: string; value: React.ReactNode; fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
+  <div className={`${fullWidth ? 'col-span-1 md:col-span-2 print:col-span-3' : 'col-span-1'} mb-2 print:mb-1`}>
+    <dt className="text-xs font-bold text-slate-500 uppercase tracking-wide print:text-black print:text-[10px]">{label}</dt>
+    <dd className="text-sm font-medium text-slate-900 border-b border-slate-100 pb-1 mt-0.5 print:text-xs print:border-slate-300">
+      {value || <span className="text-slate-300 italic">-</span>}
+    </dd>
+  </div>
+);
+
+// Contenedor de Sección
+const SectionBlock: React.FC<{ title: string; icon: React.ReactNode; children: React.ReactNode }> = ({ title, icon, children }) => (
+  <section className="bg-white rounded-lg shadow-sm border border-slate-200 mb-6 overflow-hidden print:shadow-none print:border print:border-slate-300 print:mb-4 print:rounded-none">
+    <div className="px-6 py-3 border-b border-slate-100 bg-slate-50 flex items-center gap-2 print:bg-slate-100 print:py-1.5 print:border-slate-300">
+      <span className="text-indigo-600 print:text-black print:scale-75">{icon}</span>
+      <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider print:text-black print:text-xs">{title}</h3>
+    </div>
+    <div className="p-6 print:p-3">
+      {children}
+    </div>
+  </section>
+);
+
 const StudentDetail: React.FC = () => {
   const { cedula } = useParams<{ cedula: string }>();
   const [student, setStudent] = useState<StudentDetails | null>(null);
@@ -183,185 +173,165 @@ const StudentDetail: React.FC = () => {
 
   useEffect(() => {
     const fetchStudent = async () => {
-      if (!cedula) {
-        setError('No se proporcionó una cédula válida.');
-        setLoading(false);
-        return;
-      }
-
+      if (!cedula) return;
       setLoading(true);
-      setError(null);
-
       try {
         const { data, error: rpcError } = await supabase.rpc<GetStudentFullDetailsResponse>(
-          'get_student_full_details',
-          { p_cedula: cedula }
+          'get_student_full_details', { p_cedula: cedula }
         );
-
-        if (rpcError) {
-          throw rpcError;
+        if (rpcError) throw rpcError;
+        if (data?.data) {
+          setStudent(mapToStudentDetails(data.data));
+        } else {
+          setError('Estudiante no encontrado');
         }
-
-        if (!data) {
-          setError('No se obtuvo respuesta del servidor.');
-          return;
-        }
-
-        // data es el objeto que retorna tu función: { data: {...}, error: {...} }
-        if (data.error) {
-          setError(data.error.message || 'Ocurrió un error al obtener los datos del estudiante.');
-          return;
-        }
-
-        if (!data.data) {
-          setError('No se encontró ningún estudiante con la cédula proporcionada.');
-          return;
-        }
-
-        const mapped = mapToStudentDetails(data.data);
-        setStudent(mapped);
       } catch (err: any) {
-        console.error('Error al obtener los detalles del estudiante:', err);
-        setError('Ocurrió un error al cargar los datos del estudiante.');
+        setError('Error de conexión');
       } finally {
         setLoading(false);
       }
     };
-
     fetchStudent();
   }, [cedula]);
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
-  if (loading) {
-    return <div className="text-center p-8">Cargando detalles del estudiante...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center p-8 text-red-500">{error}</div>;
-  }
-
-  if (!student) {
-    return <div className="text-center p-8">No hay datos para mostrar.</div>;
-  }
+  if (loading) return <div className="p-10 text-center text-slate-500">Cargando expediente...</div>;
+  if (error || !student) return <div className="p-10 text-center text-red-500 font-bold">{error || 'No encontrado'}</div>;
 
   return (
-    <div className="max-w-4xl mx-auto mt-10">
-      {/* --- Botones de Acción (No se imprimen) --- */}
-      <div className="flex justify-between items-center mb-6 no-print">
-        <Link to="/students" className="text-blue-600 hover:underline self-center">
-          &larr; Volver a la lista
-        </Link>
-        <button
-          onClick={handlePrint}
-          className="bg-green-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-700 transition"
-        >
-          Imprimir / Guardar PDF
-        </button>
-      </div>
-
-      {/* --- Área Imprimible --- */}
-      <div className="p-8 bg-white shadow-lg rounded-lg printable-area">
-        {/* Encabezado formal para impresión */}
-        <div className="print-only-header text-center mb-8">
-          <h1 className="text-2xl font-bold">Centro de Deportes ESPOCH</h1>
-          <p className="text-lg">Ficha Deportiva del Estudiante</p>
+    <div className="min-h-screen bg-slate-100 font-sans text-slate-900 pb-20 print:bg-white print:p-0 print:pb-0">
+      
+      {/* --- BARRA DE NAVEGACIÓN (Se oculta al imprimir) --- */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-30 print:hidden shadow-sm">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
+           <div className="flex items-center gap-3">
+              <button onClick={() => navigate('/students')} className="p-2 hover:bg-slate-100 rounded-lg text-slate-500 transition-colors">
+                 <ArrowLeft className="w-5 h-5" />
+              </button>
+              <h1 className="font-bold text-slate-800">Expediente Digital</h1>
+           </div>
+           <div className="flex gap-3">
+              <button onClick={handlePrint} className="flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 text-sm font-medium transition-colors">
+                 <Printer className="w-4 h-4" /> Imprimir PDF
+              </button>
+              <button onClick={() => navigate(`/students/edit/${student.cedula}`)} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm font-medium transition-colors">
+                 <Edit3 className="w-4 h-4" /> Editar
+              </button>
+           </div>
         </div>
+      </header>
 
-        <DetailSection title="Datos Personales y Académicos">
-          <DetailItem label="Nombres y Apellidos" value={student.nombres_apellidos} />
-          <DetailItem label="Cédula" value={student.cedula} />
-          <DetailItem label="Email" value={student.correo} />
-          <DetailItem label="Edad" value={`${student.edad} años`} />
-          <DetailItem label="Fecha de Nacimiento" value={student.fecha_nacimiento} />
-          <DetailItem label="Dirección" value={student.direccion} />
-          <DetailItem label="Facultad" value={student.facultad} />
-          <DetailItem label="Carrera" value={student.carrera} />
-          <DetailItem label="Deportes" value={student.deportes?.join(', ')} />
-          <DetailItem label="Cinta(s)" value={student.cintas?.join(', ')} />
-        </DetailSection>
-
-        {student.ficha_medica && Object.keys(student.ficha_medica).length > 0 && (
-          <DetailSection title="Ficha Médica">
-            <DetailItem label="Tipo de Sangre" value={student.ficha_medica.tipo_sangre} />
-            <DetailItem label="Patologías" value={student.ficha_medica.patologias} />
-            <DetailItem
-              label="Última Consulta"
-              value={student.ficha_medica.ultima_consulta_medica}
-            />
-          </DetailSection>
-        )}
-
-        {student.tests_fisicos && student.tests_fisicos.length > 0 && (
-          <DetailSection title="Tests Físicos">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="p-3 font-semibold">Categoría</th>
-                    <th className="p-3 font-semibold">Prueba</th>
-                    <th className="p-3 font-semibold">Resultado</th>
-                    <th className="p-3 font-semibold">Fecha prueba</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {student.tests_fisicos.map(test => (
-                    <tr key={test.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{test.categoria}</td>
-                      <td className="p-3">{test.prueba}</td>
-                      <td className="p-3">
-                        {test.resultado} {test.unidad}
-                      </td>
-                      <td className="p-3">
-                        {new Date(test.fecha_prueba).toLocaleDateString()}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </DetailSection>
-        )}
-
-        {student.records_deportivos && student.records_deportivos.length > 0 && (
-          <DetailSection title="Récords Deportivos">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="p-3 font-semibold">Competencia</th>
-                    <th className="p-3 font-semibold">Fecha</th>
-                    <th className="p-3 font-semibold">Puesto</th>
-                    <th className="p-3 font-semibold">Resultado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {student.records_deportivos.map(record => (
-                    <tr key={record.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{record.nombre_competencia}</td>
-                      <td className="p-3">{record.fecha_competencia}</td>
-                      <td className="p-3">{record.puesto}</td>
-                      <td className="p-3">{record.resultado}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </DetailSection>
-        )}
-
-        <div className="flex justify-end space-x-4 border-t pt-6 mt-8 no-print">
-          <button
-            onClick={() => navigate(`/students/edit/${student.cedula}`)}
-            className="bg-yellow-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-yellow-600 transition"
-          >
-            Editar
-          </button>
+      <main className="max-w-5xl mx-auto px-6 py-8 print:max-w-none print:px-8 print:py-4">
         
+        {/* --- ENCABEZADO DE IMPRESIÓN (Solo visible al imprimir) --- */}
+        <div className="hidden print:flex flex-col items-center border-b-2 border-black pb-4 mb-6">
+            <h1 className="text-xl font-bold uppercase tracking-widest">Unidad de Deportes</h1>
+            <h2 className="text-sm font-semibold uppercase text-gray-600">Ficha Técnica del Deportista</h2>
+            <p className="text-xs text-gray-500 mt-1">Fecha de Emisión: {new Date().toLocaleDateString()}</p>
         </div>
-      </div>
+
+        {/* 1. SECCIÓN: DATOS PERSONALES (Compacto y Profesional) */}
+        <SectionBlock title="Información Personal y Académica" icon={<User className="w-4 h-4" />}>
+           <dl className="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-4 print:grid-cols-3 print:gap-y-2">
+              <DataField label="Nombres Completos" value={student.nombres_apellidos} fullWidth />
+              <DataField label="Cédula de Identidad" value={student.cedula} />
+              <DataField label="Fecha Nacimiento" value={`${student.fecha_nacimiento} (${student.edad} años)`} />
+              <DataField label="Correo Institucional" value={student.correo} />
+              <DataField label="Dirección" value={student.direccion} />
+              <DataField label="Facultad" value={student.facultad} />
+              <DataField label="Carrera" value={student.carrera} />
+           </dl>
+        </SectionBlock>
+
+        {/* 2. GRID DEPORTIVO Y MÉDICO (Lado a lado en pantalla, apilado o grid en print) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 print:gap-4">
+           
+           {/* Perfil Deportivo */}
+           <SectionBlock title="Perfil Deportivo" icon={<Trophy className="w-4 h-4" />}>
+              <dl className="grid grid-cols-1 gap-4 print:grid-cols-2">
+                 <DataField label="Disciplina(s)" value={student.deportes?.join(', ')} />
+                 <DataField label="Nivel / Cintas" value={student.cintas?.join(', ')} />
+              </dl>
+           </SectionBlock>
+
+           {/* Ficha Médica */}
+           <SectionBlock title="Datos Médicos" icon={<HeartPulse className="w-4 h-4" />}>
+              <dl className="grid grid-cols-2 gap-4">
+                 <DataField label="Tipo de Sangre" value={student.ficha_medica?.tipo_sangre} />
+                 <DataField label="Última Consulta" value={student.ficha_medica?.ultima_consulta_medica} />
+                 <DataField label="Patologías / Alergias" value={student.ficha_medica?.patologias} fullWidth />
+              </dl>
+           </SectionBlock>
+        </div>
+
+        {/* 3. TABLA DE TESTS FÍSICOS */}
+        <SectionBlock title="Evaluación de Rendimiento Físico" icon={<Activity className="w-4 h-4" />}>
+          {student.tests_fisicos.length > 0 ? (
+            <div className="overflow-hidden rounded-md border border-slate-200 print:border-black">
+              <table className="w-full text-left text-sm print:text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase print:bg-gray-100 print:text-black">
+                  <tr>
+                    <th className="px-4 py-3 print:py-2">Categoría</th>
+                    <th className="px-4 py-3 print:py-2">Prueba</th>
+                    <th className="px-4 py-3 print:py-2">Resultado</th>
+                    <th className="px-4 py-3 print:py-2">Fecha</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 print:divide-slate-300">
+                  {student.tests_fisicos.map(test => (
+                    <tr key={test.id}>
+                      <td className="px-4 py-3 print:py-1.5 font-medium">{test.categoria}</td>
+                      <td className="px-4 py-3 print:py-1.5">{test.prueba}</td>
+                      <td className="px-4 py-3 print:py-1.5 font-bold">{test.resultado} {test.unidad}</td>
+                      <td className="px-4 py-3 print:py-1.5 text-slate-500 print:text-black">{new Date(test.fecha_prueba).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-sm text-slate-400 italic">No hay registros de evaluaciones.</p>
+          )}
+        </SectionBlock>
+
+        {/* 4. TABLA DE COMPETENCIAS */}
+        <SectionBlock title="Historial Competitivo" icon={<FileText className="w-4 h-4" />}>
+          {student.records_deportivos.length > 0 ? (
+            <div className="overflow-hidden rounded-md border border-slate-200 print:border-black">
+              <table className="w-full text-left text-sm print:text-xs">
+                <thead className="bg-slate-50 text-slate-500 font-bold uppercase print:bg-gray-100 print:text-black">
+                  <tr>
+                    <th className="px-4 py-3 print:py-2">Competencia</th>
+                    <th className="px-4 py-3 print:py-2">Fecha</th>
+                    <th className="px-4 py-3 print:py-2">Puesto</th>
+                    <th className="px-4 py-3 print:py-2">Resultado</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 print:divide-slate-300">
+                  {student.records_deportivos.map(record => (
+                    <tr key={record.id}>
+                      <td className="px-4 py-3 print:py-1.5 font-medium">{record.nombre_competencia}</td>
+                      <td className="px-4 py-3 print:py-1.5">{record.fecha_competencia}</td>
+                      <td className="px-4 py-3 print:py-1.5 font-bold">#{record.puesto}</td>
+                      <td className="px-4 py-3 print:py-1.5 uppercase text-xs">{record.resultado}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+             <p className="text-sm text-slate-400 italic">No hay registros de competencias.</p>
+          )}
+        </SectionBlock>
+
+        {/* Pie de página de impresión */}
+        <div className="hidden print:flex mt-8 pt-8 border-t border-black justify-between text-[10px] text-gray-500">
+            <span>Sistema de Gestión Deportiva ESPOCH</span>
+            <span>Generado el: {new Date().toLocaleString()}</span>
+        </div>
+
+      </main>
     </div>
   );
 };
