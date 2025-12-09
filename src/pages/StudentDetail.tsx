@@ -275,7 +275,6 @@ const StudentDetail: React.FC = () => {
                     <th className="px-4 py-3 print:py-2">Categoría</th>
                     <th className="px-4 py-3 print:py-2">Prueba</th>
                     <th className="px-4 py-3 print:py-2">Resultado</th>
-                    <th className="px-4 py-3 print:py-2">Fecha</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 print:divide-slate-300">
@@ -284,7 +283,7 @@ const StudentDetail: React.FC = () => {
                       <td className="px-4 py-3 print:py-1.5 font-medium">{test.categoria}</td>
                       <td className="px-4 py-3 print:py-1.5">{test.prueba}</td>
                       <td className="px-4 py-3 print:py-1.5 font-bold">{test.resultado} {test.unidad}</td>
-                      <td className="px-4 py-3 print:py-1.5 text-slate-500 print:text-black">{new Date(test.fecha_prueba).toLocaleDateString()}</td>
+                      
                     </tr>
                   ))}
                 </tbody>

@@ -3,9 +3,18 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Database } from '../types/database';
 import Input from '../components/Input';
-import { Search, UserPlus, Users, Activity, ChevronRight, AlertCircle, Loader2, ShieldCheck } from 'lucide-react';
+import { 
+  Search, 
+  ArrowRight, 
+  Users, 
+  FileText, 
+  Activity, 
+  ShieldCheck, 
+  Loader2, 
+  LayoutDashboard
+} from 'lucide-react';
 
-// --- TIPOS (Lógica Intacta) ---
+// --- TIPOS (Lógica intacta) ---
 export type Estudiante = {
   id: string;
   cedula: string;
@@ -46,9 +55,7 @@ const Home: React.FC = () => {
         p_cedula: cedula
       });
 
-      if (rpcError) {
-        throw rpcError;
-      }
+      if (rpcError) throw rpcError;
 
       if (data) {
         navigate(`/students/${cedula}`);
@@ -64,152 +71,161 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className="flex h-screen w-full bg-slate-50 font-sans selection:bg-indigo-100 selection:text-indigo-900 overflow-hidden">
+    <div className="flex min-h-screen w-full bg-white font-sans text-slate-900 selection:bg-indigo-500 selection:text-white overflow-hidden">
       
-      {/* Estilos para animaciones suaves */}
-      <style>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-enter {
-          animation: fadeInUp 0.5s ease-out forwards;
-        }
-        .delay-100 { animation-delay: 0.1s; }
-        .delay-200 { animation-delay: 0.2s; }
-      `}</style>
-
-      {/* --- IZQUIERDA: BRANDING VISUAL (45%) --- */}
-      {/* Mantenemos el fondo oscuro para contraste, pero limpiamos los elementos */}
-      <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-[#0f172a] text-white flex-col justify-between p-12 xl:p-16 z-10 shadow-2xl">
+      {/* 1. SECCIÓN IZQUIERDA: VISUAL / BRANDING */}
+      <div className="hidden lg:flex lg:w-5/12 relative bg-slate-900 flex-col justify-between p-12 overflow-hidden">
         
-        {/* Elementos Decorativos de Fondo */}
-        <div className="absolute top-0 right-0 -mr-32 -mt-32 w-[600px] h-[600px] bg-indigo-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-20 animate-pulse"></div>
-        <div className="absolute bottom-0 left-0 -ml-32 -mb-32 w-[500px] h-[500px] bg-teal-600 rounded-full mix-blend-multiply filter blur-[100px] opacity-20"></div>
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-[0.03]"></div>
-
-        {/* Header Branding */}
-        <div className="relative z-10 animate-enter">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 mb-8 backdrop-blur-sm">
-            <ShieldCheck className="w-4 h-4 text-teal-400" />
-            <span className="text-[10px] font-bold tracking-widest text-teal-100/90 uppercase">Sistema Seguro</span>
-          </div>
-          <h1 className="text-4xl xl:text-5xl font-extrabold leading-tight tracking-tight text-white">
-            Gestión Deportiva <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-indigo-400">
-              Institucional
-            </span>
-          </h1>
-          <p className="mt-6 text-lg text-slate-400 max-w-md leading-relaxed">
-            Plataforma centralizada para el seguimiento del rendimiento físico, médico y competitivo de los estudiantes.
-          </p>
+        {/* Fondo con efecto de luz ambiental */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0">
+           <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-600/30 rounded-full blur-[100px]"></div>
+           <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-teal-600/20 rounded-full blur-[100px]"></div>
         </div>
 
-        {/* Footer Branding */}
-        <div className="relative z-10 animate-enter delay-200">
-             <div className="flex items-center gap-4 text-sm font-medium text-slate-500">
-                <span>ESPOCH © {new Date().getFullYear()}</span>
-                <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
-                <span>Educación Física</span>
-             </div>
+        {/* Contenido Branding */}
+        <div className="relative z-10 mt-10">
+           <div className="flex items-center gap-3 mb-6">
+              <div className="p-2 bg-white/10 rounded-lg backdrop-blur-sm border border-white/10">
+                 <ShieldCheck className="w-6 h-6 text-indigo-400" />
+              </div>
+              <span className="text-white/80 font-semibold tracking-wider text-sm uppercase">Sistema Institucional</span>
+           </div>
+           
+           <h1 className="text-5xl font-bold text-white leading-[1.1] tracking-tight">
+             Control de <br />
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-teal-400">
+               Alto Rendimiento
+             </span>
+           </h1>
+           <p className="mt-6 text-slate-400 text-lg leading-relaxed max-w-sm">
+             Plataforma centralizada para la gestión de fichas médicas, pruebas físicas y seguimiento competitivo.
+           </p>
+        </div>
+
+        {/* Tarjeta Flotante Decorativa */}
+        <div className="relative z-10 mb-10">
+           <div className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-2xl">
+              <div className="flex items-center gap-4 mb-4">
+                 <div className="w-10 h-10 rounded-full bg-teal-500/20 flex items-center justify-center text-teal-400">
+                    <Activity className="w-5 h-5" />
+                 </div>
+                 <div>
+                    <div className="text-white font-medium">Estado del Sistema</div>
+                    <div className="text-slate-400 text-xs">Base de datos sincronizada</div>
+                 </div>
+              </div>
+              <div className="h-1.5 w-full bg-slate-700/50 rounded-full overflow-hidden">
+                 <div className="h-full bg-teal-500 w-3/4 rounded-full"></div>
+              </div>
+           </div>
+           <p className="mt-6 text-xs text-slate-500 font-medium">
+             ESPOCH © {new Date().getFullYear()} • Departamento de Educación Física
+           </p>
         </div>
       </div>
 
-      {/* --- DERECHA: INTERACCIÓN (55%) --- */}
-      <div className="w-full lg:w-[55%] flex flex-col justify-center items-center p-6 bg-slate-50 relative">
+      {/* 2. SECCIÓN DERECHA: INTERACCIÓN */}
+      <div className="w-full lg:w-7/12 flex flex-col justify-center items-center p-6 sm:p-12 relative bg-white">
         
-        <div className="w-full max-w-[440px] animate-enter delay-100">
+        {/* Patrón de puntos sutil en el fondo */}
+        <div className="absolute inset-0 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] [background-size:20px_20px] opacity-40 pointer-events-none"></div>
+
+        <div className="w-full max-w-md relative z-10">
           
           {/* Header Móvil */}
-          <div className="lg:hidden mb-8 flex items-center gap-3 justify-center">
-            <div className="w-10 h-10 bg-[#0f172a] rounded-lg flex items-center justify-center text-white">
-              <Activity className="w-5 h-5" />
-            </div>
-            <span className="font-bold text-slate-900 text-xl tracking-tight">Deportes ESPOCH</span>
+          <div className="lg:hidden flex justify-center mb-8">
+             <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center text-white shadow-xl">
+                <Activity className="w-6 h-6" />
+             </div>
           </div>
 
-          <div className="text-center lg:text-left mb-8">
-             <h2 className="text-2xl font-bold text-slate-900 tracking-tight">Bienvenido</h2>
-             <p className="text-slate-500 mt-2">Ingrese la cédula para consultar o gestionar un expediente.</p>
+          <div className="text-center mb-10">
+             <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Bienvenido</h2>
+             <p className="text-slate-500 mt-2 text-base">Gestione los expedientes deportivos de forma rápida.</p>
           </div>
 
-          {/* TARJETA DEL FORMULARIO PRINCIPAL */}
-          <div className="bg-white p-6 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 relative z-20">
-             <form onSubmit={handleSearch}>
-                <div className="space-y-4">
-                   <label htmlFor="cedula" className="block text-sm font-bold text-slate-700 uppercase tracking-wide">
-                      Cédula de Identidad
-                   </label>
-                   
-                   <div className="relative group">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                         <Search className={`h-5 w-5 transition-colors duration-200 ${loading ? 'text-indigo-500' : 'text-slate-400 group-focus-within:text-indigo-500'}`} />
-                      </div>
-                      
-                      <Input
-                         id="cedula"
-                         label="" 
-                         type="text"
-                         value={cedula}
-                         onChange={(e) => setCedula(e.target.value)}
-                         placeholder="Ej: 0604..."
-                         required
-                         className="block w-full pl-11 pr-4 py-3.5 bg-slate-50 border border-slate-200 text-slate-900 placeholder-slate-400 rounded-xl focus:outline-none focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all font-medium text-base shadow-inner"
-                      />
-                   </div>
-
-                   <button
-                      type="submit"
-                      disabled={loading}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold text-sm uppercase tracking-wide transition-all shadow-lg shadow-indigo-600/20 hover:shadow-indigo-600/30 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                   >
-                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Consultar Expediente'}
-                   </button>
+          {/* FORMULARIO DE BÚSQUEDA */}
+          <div className="bg-white rounded-2xl shadow-xl shadow-slate-200/60 border border-slate-100 p-1">
+             <form onSubmit={handleSearch} className="relative">
+                <div className="relative flex items-center">
+                   <Search className={`absolute left-4 w-5 h-5 transition-colors ${loading ? 'text-indigo-500' : 'text-slate-400'}`} />
+                   <input
+                      type="text"
+                      value={cedula}
+                      onChange={(e) => setCedula(e.target.value)}
+                      placeholder="Ingrese número de cédula..."
+                      className="w-full pl-12 pr-4 h-16 bg-transparent text-lg text-slate-800 placeholder:text-slate-400 focus:outline-none font-medium"
+                   />
                 </div>
+                
+                <button
+                   type="submit"
+                   disabled={loading}
+                   className="w-full h-12 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-medium transition-all flex items-center justify-center gap-2 mt-1 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                   {loading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>Buscando...</span>
+                      </>
+                   ) : (
+                      <span>Consultar Expediente</span>
+                   )}
+                </button>
              </form>
-
-             {/* Error Message */}
-             {error && (
-                <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl flex items-start gap-3 text-red-600 animate-in fade-in slide-in-from-top-1">
-                   <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                   <span className="text-sm font-medium leading-tight">{error}</span>
-                </div>
-             )}
           </div>
 
-          {/* Separador */}
-          <div className="relative flex py-8 items-center w-full">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink-0 mx-4 text-slate-400 text-[10px] font-bold uppercase tracking-widest">Accesos Rápidos</span>
-            <div className="flex-grow border-t border-slate-200"></div>
+          {/* MENSAJE DE ERROR */}
+          {error && (
+             <div className="mt-4 p-3 bg-red-50 border border-red-100 text-red-600 rounded-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500"></div>
+                {error}
+             </div>
+          )}
+
+          {/* SEPARADOR */}
+          <div className="my-10 flex items-center gap-4">
+             <div className="h-px bg-slate-200 flex-1"></div>
+             <span className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Opciones </span>
+             <div className="h-px bg-slate-200 flex-1"></div>
           </div>
 
-          {/* Tarjetas de Acción Secundaria */}
+          {/* ACCESOS DIRECTOS */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            
-            <Link to="/students/new" className="group p-4 bg-white border border-slate-200 rounded-xl hover:border-indigo-300 hover:shadow-md transition-all duration-200 flex flex-col gap-3">
-               <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <UserPlus className="w-5 h-5" />
-               </div>
-               <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Nuevo Registro</h3>
-                  <p className="text-xs text-slate-500 mt-1">Crear ficha de deportista</p>
-               </div>
-            </Link>
+             
+             <Link to="/students/new" className="group relative p-5 bg-white border border-slate-200 rounded-2xl hover:border-indigo-600 hover:shadow-lg transition-all duration-300">
+                <div className="flex flex-col h-full justify-between">
+                   <div className="w-10 h-10 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      <FileText className="w-5 h-5" />
+                   </div>
+                   <div>
+                      <h3 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">Nuevo Registro</h3>
+                      <p className="text-xs text-slate-500 mt-1">Crear ficha de deportista</p>
+                   </div>
+                   <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">
+                      <ArrowRight className="w-4 h-4 text-indigo-600" />
+                   </div>
+                </div>
+             </Link>
 
-            <Link to="/students" className="group p-4 bg-white border border-slate-200 rounded-xl hover:border-teal-300 hover:shadow-md transition-all duration-200 flex flex-col gap-3">
-               <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Users className="w-5 h-5" />
-               </div>
-               <div>
-                  <h3 className="font-bold text-slate-800 text-sm">Directorio</h3>
-                  <p className="text-xs text-slate-500 mt-1">Ver lista completa</p>
-               </div>
-            </Link>
+             <Link to="/students" className="group relative p-5 bg-white border border-slate-200 rounded-2xl hover:border-teal-600 hover:shadow-lg transition-all duration-300">
+                <div className="flex flex-col h-full justify-between">
+                   <div className="w-10 h-10 rounded-lg bg-teal-50 text-teal-600 flex items-center justify-center mb-3 group-hover:bg-teal-600 group-hover:text-white transition-colors">
+                      <LayoutDashboard className="w-5 h-5" />
+                   </div>
+                   <div>
+                      <h3 className="font-bold text-slate-800 group-hover:text-teal-600 transition-colors">Directorio</h3>
+                      <p className="text-xs text-slate-500 mt-1">Ver todos los estudiantes</p>
+                   </div>
+                   <div className="absolute top-5 right-5 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0">
+                      <ArrowRight className="w-4 h-4 text-teal-600" />
+                   </div>
+                </div>
+             </Link>
 
           </div>
-        </div>
 
+        </div>
       </div>
     </div>
   );
