@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { DeporteName, ResultadoCompetencia, RESULTADOS_COMPETENCIA, TipoSangreEnum, FichaMedicaInsert, TestFisicoInsert, RecordDeportivoInsert, CategoriaPruebaEnum, CATEGORIAS_PRUEBA } from '../types/database';
+import { DeporteName, ResultadoCompetencia, RESULTADOS_COMPETENCIA, TipoSangreEnum, FichaMedicaInsert, TestFisicoInsert, RecordDeportivoInsert, CATEGORIAS_PRUEBA } from '../types/database';
 import Input from '../components/Input';
 import Select from '../components/Select';
 import Button from '../components/Button';
@@ -18,8 +18,7 @@ import {
   Plus, 
   Trash2, 
   AlertCircle,
-  CheckCircle2,
-  Save
+  CheckCircle2
 } from 'lucide-react';
 
 // --- TIPOS (Lógica Original Intacta) ---
@@ -124,17 +123,17 @@ const StudentForm: React.FC = () => {
     const fetchFacultadesAndCarreras = async () => {
         const { data: facultadesData, error: facultadesError } = await supabase.rpc('get_facultades');
         if (facultadesError) console.error('Error fetching facultades:', facultadesError);
-        else setAvailableFacultades(facultadesData || []);
+        else setAvailableFacultades((facultadesData as unknown as Facultad[]) || []);
 
         const { data: carrerasData, error: carrerasError } = await supabase.rpc('get_carreras_con_facultad');
         if (carrerasError) console.error('Error fetching carreras:', carrerasError);
-        else setAvailableCarreras(carrerasData || []);
+        else setAvailableCarreras((carrerasData as unknown as Carrera[]) || []);
     };
 
     const fetchCintas = async () => {
       const { data, error } = await supabase.from('cinta_tipos').select('color').order('id');
       if (error) console.error('Error fetching cintas:', error);
-      else setAvailableCintas(data.map(c => c.color));
+      else setAvailableCintas((data || []).map((c: any) => c.color));
     };
     fetchCintas();
     fetchFacultadesAndCarreras();
@@ -147,15 +146,30 @@ const StudentForm: React.FC = () => {
         const { data, error: clientError } = await supabase.rpc('get_student_full_details', { p_cedula: cedula });
         setLoading(false);
 
-        if (clientError || (data && data.error)) {
-          alert(clientError?.message || data?.error?.message || 'Error al cargar estudiante.');
+        if (clientError) {
+          alert(clientError?.message || 'Error al cargar estudiante.');
           navigate('/students'); // UX: Regresar a lista si falla
           return;
         }
         
-        if (data && data.data) {
-            const studentData = data.data;
-            const carrera = availableCarreras.find(c => c.id === studentData.estudiante.carrera_id);
+        if (data) {
+            const response: any = data;
+            // La función RPC retorna {data: {...}, error: {...}}
+            if (response?.error) {
+              alert(response.error.message || 'Error al cargar estudiante.');
+              navigate('/students');
+              return;
+            }
+            
+            const studentData: any = response?.data;
+            if (!studentData) {
+              alert('No se encontraron datos del estudiante.');
+              navigate('/students');
+              return;
+            }
+            
+            const carreraId = studentData.estudiante?.carrera_id || null;
+            const carrera = carreraId ? availableCarreras.find(c => c.id === carreraId) : null;
 
             setStudentId(studentData.estudiante.id);
             setEstudiante({
@@ -163,12 +177,13 @@ const StudentForm: React.FC = () => {
               nombres_apellidos: studentData.estudiante.nombres_apellidos || '',
               direccion: studentData.estudiante.direccion || '',
               correo: studentData.estudiante.correo || '',
-              carrera_id: studentData.estudiante.carrera_id || '',
+              carrera_id: carreraId || '',
               facultad_id: carrera?.facultad_id || '',
               fecha_nacimiento: studentData.estudiante.fecha_nacimiento ? new Date(studentData.estudiante.fecha_nacimiento).toISOString().split('T')[0] : '',
             });
-            setSelectedSport(studentData.deportes?.[0]?.deporte?.nombre || '');
-            setSelectedCinta(studentData.deportes?.[0]?.cinta_tipo?.color || '');
+            // Los deportes vienen como array de objetos con deporte.nombre
+            setSelectedSport((studentData.deportes && studentData.deportes[0]?.deporte?.nombre) || '');
+            setSelectedCinta((studentData.deportes && studentData.deportes[0]?.cinta_tipo?.color) || '');
             if (studentData.ficha_medica) {
               setFichaMedica({
                 tipo_sangre: studentData.ficha_medica.tipo_sangre || 'A+',
@@ -226,7 +241,7 @@ const StudentForm: React.FC = () => {
   };
 
   const addRecord = () => {
-    setRecords([...records, { nombre_competencia: '', fecha_competencia: '', resultado: 'otro', puesto: 0 }]);
+    setRecords([...records, { nombre_competencia: '', fecha_competencia: '', resultado: 'OTRO', puesto: 0 }]);
   };
 
   const removeRecord = (index: number) => {
@@ -302,11 +317,11 @@ const StudentForm: React.FC = () => {
             p_fecha_nacimiento: estudiante.fecha_nacimiento,
             p_direccion: estudiante.direccion,
             p_correo: estudiante.correo,
-            p_facultad_id: estudiante.facultad_id === '' ? null : estudiante.facultad_id,
             p_carrera_id: estudiante.carrera_id === '' ? null : estudiante.carrera_id,
+            p_facultad_id: estudiante.facultad_id === '' ? null : estudiante.facultad_id,
             p_deporte_nombre: selectedSport,
-            p_ficha_medica: fichaMedicaPayload,
             p_cinta_color: selectedCinta,
+            p_ficha_medica: fichaMedicaPayload,
             p_tests_fisicos: testsFisicos,
             p_records_deportivos: recordsDeportivosPayload,
         });

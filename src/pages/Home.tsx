@@ -2,11 +2,9 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { Database } from '../types/database';
-import Input from '../components/Input';
 import { 
   Search, 
   ArrowRight, 
-  Users, 
   FileText, 
   Activity, 
   ShieldCheck, 
@@ -51,7 +49,7 @@ const Home: React.FC = () => {
     }
 
     try {
-      const { data, error: rpcError } = await supabase.rpc<FullStudentDetails>('get_student_full_details', {
+      const { data, error: rpcError } = await supabase.rpc('get_student_full_details', {
         p_cedula: cedula
       });
 

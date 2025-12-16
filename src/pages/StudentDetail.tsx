@@ -1,51 +1,44 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import { 
   Printer, Edit3, ArrowLeft, User, FileText, 
-  Activity, Trophy, HeartPulse, Building2 
+  Activity, Trophy, HeartPulse
 } from 'lucide-react';
 
 // === INTERFACES (Lógica Intacta) ===
-interface FichaMedica {
-  tipo_sangre: string;
-  patologias: string | null;
-  ultima_consulta_medica: string | null;
-}
-
 interface TestFisico {
-  id: number;
+  id: number | string;
   categoria: string;
   prueba: string;
-  unidad: string;
+  unidad: string | null;
   resultado: string;
-  created_at: string;
-  fecha_prueba: string;
+  created_at?: string;
+  fecha_prueba?: string;
 }
 
 interface RecordDeportivo {
   id: number;
   nombre_competencia: string;
   fecha_competencia: string;
-  resultado: string;
-  puesto: number;
+  resultado: string | null;
+  puesto: number | null;
 }
 
 interface RawEstudiante {
   id: string;
   cedula: string;
   nombres_apellidos: string;
-  fecha_nacimiento: string;
-  direccion: string;
-  correo: string;
+  direccion: string | null;
+  correo: string | null;
   carrera_id: number | null;
   facultad_id: number | null;
+  fecha_nacimiento: string;
 }
 
 interface RawCarrera {
   id: number;
   nombre: string;
-  facultad_id: number;
 }
 
 interface RawFacultad {
@@ -53,31 +46,32 @@ interface RawFacultad {
   nombre: string;
 }
 
-interface RawDeporteItem {
-  estudiante_deporte: any;
-  deporte: { id: number; nombre: string };
-  cinta_tipo: { id: number; color: string } | null;
-}
-
-interface RawCintaItem {
-  deporte_id: number;
-  deporte_nombre: string;
-  cinta_tipo_id: number | null;
-  cinta_color: string | null;
-}
-
 interface GetStudentFullDetailsData {
   estudiante: RawEstudiante;
-  deportes: RawDeporteItem[];
-  ficha_medica: FichaMedica | null;
+  deportes: Array<{
+    deporte: { id: number; nombre: string };
+    estudiante_deporte: any;
+    cinta_tipo: { id: number; color: string } | null;
+  }>;
+  cintas: Array<{
+    deporte_id: number;
+    deporte_nombre: string;
+    cinta_tipo_id: number | null;
+    cinta_color: string | null;
+  }>;
+  ficha_medica: {
+    estudiante_id: string;
+    patologias: string | null;
+    tipo_sangre: string | null;
+    ultima_consulta_medica: string | null;
+  } | null;
   tests_fisicos: TestFisico[];
   records_deportivos: RecordDeportivo[];
   carrera: RawCarrera | null;
   facultad: RawFacultad | null;
-  cintas: RawCintaItem[];
 }
 
-interface GetStudentFullDetailsResponse {
+interface SupabaseResponse {
   data: GetStudentFullDetailsData | null;
   error: { message: string; detail?: string } | null;
 }
@@ -92,7 +86,11 @@ interface StudentDetails {
   carrera: string;
   facultad: string;
   edad: number;
-  ficha_medica: FichaMedica | null;
+  ficha_medica: {
+    tipo_sangre: string | null;
+    patologias: string | null;
+    ultima_consulta_medica: string | null;
+  } | null;
   tests_fisicos: TestFisico[];
   deportes: string[];
   cintas: string[] | null;
@@ -113,29 +111,36 @@ const calcularEdad = (fechaNacimiento: string): number => {
 
 const mapToStudentDetails = (payload: GetStudentFullDetailsData): StudentDetails => {
   const {
-    estudiante, deportes, ficha_medica, tests_fisicos, records_deportivos, carrera, facultad, cintas,
+    estudiante, deportes, ficha_medica, tests_fisicos, records_deportivos, carrera, facultad, cintas
   } = payload;
 
   const deportesNombres = deportes?.map(d => d.deporte.nombre) ?? [];
   const cintasNombres = cintas && cintas.length > 0
-      ? cintas.filter(c => c.cinta_color).map(c => `${c.deporte_nombre} - ${c.cinta_color}`)
-      : null;
+    ? cintas.filter(c => c.cinta_color).map(c => `${c.deporte_nombre}: ${c.cinta_color}`)
+    : null;
+  
+  // Transform ficha_medica to match the expected type
+  const transformedFichaMedica = ficha_medica ? {
+    tipo_sangre: ficha_medica.tipo_sangre,
+    patologias: ficha_medica.patologias,
+    ultima_consulta_medica: ficha_medica.ultima_consulta_medica
+  } : null;
 
   return {
     id: estudiante.id,
     cedula: estudiante.cedula,
     nombres_apellidos: estudiante.nombres_apellidos,
     fecha_nacimiento: estudiante.fecha_nacimiento,
-    direccion: estudiante.direccion,
-    correo: estudiante.correo,
+    direccion: estudiante.direccion ?? '—',
+    correo: estudiante.correo ?? '—',
     carrera: carrera?.nombre ?? 'No registrada',
     facultad: facultad?.nombre ?? 'No registrada',
     edad: calcularEdad(estudiante.fecha_nacimiento),
-    ficha_medica: ficha_medica,
-    tests_fisicos,
+    ficha_medica: transformedFichaMedica,
+    tests_fisicos: tests_fisicos ?? [],
     deportes: deportesNombres,
     cintas: cintasNombres,
-    records_deportivos,
+    records_deportivos: records_deportivos ?? [],
   };
 };
 
@@ -176,12 +181,17 @@ const StudentDetail: React.FC = () => {
       if (!cedula) return;
       setLoading(true);
       try {
-        const { data, error: rpcError } = await supabase.rpc<GetStudentFullDetailsResponse>(
+        const { data: rpcData, error: rpcError } = await supabase.rpc(
           'get_student_full_details', { p_cedula: cedula }
         );
         if (rpcError) throw rpcError;
-        if (data?.data) {
-          setStudent(mapToStudentDetails(data.data));
+        
+        const response = rpcData as unknown as SupabaseResponse;
+        
+        if (response?.error) {
+          setError(response.error.message);
+        } else if (response?.data) {
+          setStudent(mapToStudentDetails(response.data));
         } else {
           setError('Estudiante no encontrado');
         }
@@ -267,7 +277,7 @@ const StudentDetail: React.FC = () => {
 
         {/* 3. TABLA DE TESTS FÍSICOS */}
         <SectionBlock title="Evaluación de Rendimiento Físico" icon={<Activity className="w-4 h-4" />}>
-          {student.tests_fisicos.length > 0 ? (
+          {student.tests_fisicos && student.tests_fisicos.length > 0 ? (
             <div className="overflow-hidden rounded-md border border-slate-200 print:border-black">
               <table className="w-full text-left text-sm print:text-xs">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase print:bg-gray-100 print:text-black">
@@ -296,7 +306,7 @@ const StudentDetail: React.FC = () => {
 
         {/* 4. TABLA DE COMPETENCIAS */}
         <SectionBlock title="Historial Competitivo" icon={<FileText className="w-4 h-4" />}>
-          {student.records_deportivos.length > 0 ? (
+          {student.records_deportivos && student.records_deportivos.length > 0 ? (
             <div className="overflow-hidden rounded-md border border-slate-200 print:border-black">
               <table className="w-full text-left text-sm print:text-xs">
                 <thead className="bg-slate-50 text-slate-500 font-bold uppercase print:bg-gray-100 print:text-black">

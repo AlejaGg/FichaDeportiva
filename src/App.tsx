@@ -1,5 +1,4 @@
-import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import StudentList from './pages/StudentList'; // Asumo que tienes esta página
 import StudentForm from './pages/StudentForm'; // Asumo que tienes el formulario de registro/edición

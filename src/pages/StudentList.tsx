@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabaseClient';
 import { toast } from 'sonner';
 import { 
   Plus, Search, Eye, Edit3, Trash2, 
-  Filter, X, Trophy, Activity, ChevronDown, LayoutGrid, Users 
+  Filter, X, ChevronDown, Users 
 } from 'lucide-react';
 
 // --- TIPOS (Lógica intacta) ---
@@ -37,14 +37,14 @@ const StudentList: React.FC = () => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: studentsData } = await supabase.from('vista_lista_estudiantes_completa').select('*');
-        if (studentsData) setStudents(studentsData as StudentListItem[]);
+        const { data: studentsData } = await supabase.from('vista_lista_estudiantes_completa' as any).select('*');
+        if (studentsData) setStudents(studentsData as unknown as StudentListItem[]);
 
         const { data: deportesRes } = await supabase.from('deportes').select('nombre').order('nombre');
         if (deportesRes) setAllDeportes(deportesRes.map(d => d.nombre));
 
         const { data: cintasRes } = await supabase.from('cinta_tipos').select('color').order('color');
-        if (cintasRes) setAllCintas(cintasRes.map(c => c.color));
+        if (cintasRes) setAllCintas((cintasRes as any[]).map((c: any) => c.color));
 
       } catch (err) {
         console.error(err);
@@ -80,7 +80,7 @@ const StudentList: React.FC = () => {
           }
         },
       },
-      cancel: { label: 'Cancelar' },
+      cancel: { label: 'Cancelar', onClick: () => {} },
     });
   };
 

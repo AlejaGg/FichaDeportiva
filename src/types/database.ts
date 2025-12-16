@@ -111,6 +111,64 @@ export interface Database {
         Relationships: []
 
       }
+      
+      cinta_tipos: {
+
+        Row: {
+
+          id: number
+
+          color: string
+
+        }
+
+        Insert: {
+
+          id?: number
+
+          color: string
+
+        }
+
+        Update: {
+
+          id?: number
+
+          color?: string
+
+        }
+
+        Relationships: []
+
+      }
+      
+      vista_lista_estudiantes_completa: {
+
+        Row: {
+
+          id: string
+
+          cedula: string
+
+          nombres_apellidos: string
+
+          edad: number | null
+
+          carrera: string | null
+
+          deportes: string[] | null
+
+          cintas: string[] | null
+
+        }
+
+        Insert: never
+
+        Update: never
+
+        Relationships: []
+
+      }
 
       estudiante_deportes: {
 
@@ -526,15 +584,17 @@ export interface Database {
 
           p_correo: string
 
-          p_carrera: string
+          p_carrera_id?: number | null
 
-          p_facultad: string
+          p_facultad_id?: number | null
 
           p_deporte_nombre: string
 
+          p_cinta_color?: string
+
           p_ficha_medica: FichaMedicaInsert
 
-          p_test_fisicos: TestFisicoInsert[]
+          p_tests_fisicos: TestFisicoInsert[]
 
           p_records_deportivos: RecordDeportivoInsert[]
 
@@ -619,6 +679,74 @@ export interface Database {
             }[]
 
         } | null
+
+      }
+
+      get_facultades: {
+
+        Args: Record<string, never>
+
+        Returns: Array<{ id: number; nombre: string }>
+
+      }
+
+      get_carreras_con_facultad: {
+
+        Args: Record<string, never>
+
+        Returns: Array<{ id: number; nombre: string; facultad_id: number; facultad_nombre: string }>
+
+      }
+
+      update_full_student: {
+
+        Args: {
+
+          p_student_id: string | null
+
+          p_nombres_apellidos: string
+
+          p_fecha_nacimiento: string
+
+          p_direccion: string
+
+          p_correo: string
+
+          p_carrera_id?: number | null
+
+          p_deporte_nombre: string
+
+          p_cinta_color?: string
+
+          p_ficha_medica: FichaMedicaInsert
+
+          p_tests_fisicos_a_agregar: TestFisicoInsert[]
+
+          p_tests_fisicos_a_actualizar: TestFisicoInsert[]
+
+          p_tests_fisicos_a_eliminar: number[]
+
+          p_records_a_agregar: RecordDeportivoInsert[]
+
+          p_records_a_actualizar: RecordDeportivoInsert[]
+
+          p_records_a_eliminar: number[]
+
+        }
+
+        Returns: void
+
+      }
+
+      delete_student: {
+
+        Args: {
+
+          p_student_id: string
+
+        }
+
+        Returns: void
 
       }
 
